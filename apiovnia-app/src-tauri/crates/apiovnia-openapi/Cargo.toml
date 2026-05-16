@@ -1,0 +1,19 @@
+[package]
+name = "apiovnia-openapi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Apiovnia — OpenAPI 3.x import/export (oas3)."
+
+[dependencies]
+apiovnia-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+oas3.workspace = true
+url.workspace = true
+
+[lints]
+workspace = true
