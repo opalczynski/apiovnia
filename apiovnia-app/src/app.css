@@ -1,0 +1,797 @@
+@import "tailwindcss";
+
+/* Self-hosted fonts (offline-friendly desktop) */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
+
+/* ================================================================
+   Apiovnia design tokens — ported from design_artifacts/tokens.css
+   ---------------------------------------------------------------
+   Token names mirror the design canvas. Components reference them via
+   `var(--token)` directly (compat with the artifact components) and
+   Tailwind v4 also exposes a subset as utilities through @theme below.
+   ================================================================ */
+
+@theme {
+  /* Colors exposed to Tailwind utilities (bg-bg, text-fg, border-border, ...) */
+  --color-bg: #0b0b0d;
+  --color-surface: #111114;
+  --color-surface-2: #16161a;
+  --color-elevated: #1b1b20;
+  --color-hover: #1e1e23;
+  --color-selected: #232329;
+
+  --color-border: #1f1f22;
+  --color-border-strong: #2a2a2f;
+  --color-border-soft: #18181c;
+
+  --color-fg: #ececec;
+  --color-fg-dim: #b5b5bc;
+  --color-fg-muted: #7c7c84;
+  --color-fg-faint: #54545b;
+
+  --color-accent: #f59e0b;
+  --color-accent-hi: #fbbf24;
+  --color-accent-dim: #b47208;
+
+  --color-method-get: #4ade80;
+  --color-method-post: #fbbf24;
+  --color-method-put: #60a5fa;
+  --color-method-patch: #a78bfa;
+  --color-method-delete: #f87171;
+  --color-method-other: #94a3b8;
+
+  --color-status-ok: #4ade80;
+  --color-status-warn: #fbbf24;
+  --color-status-err: #f87171;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+
+  --radius-badge: 4px;
+  --radius-ctrl: 6px;
+  --radius-panel: 8px;
+}
+
+/* Plain CSS variables used by component-level styles. Kept separate from
+   @theme so we don't pollute Tailwind's util generation with one-off vars. */
+:root {
+  --bg: #0b0b0d;
+  --surface: #111114;
+  --surface-2: #16161a;
+  --elevated: #1b1b20;
+  --hover: #1e1e23;
+  --selected: #232329;
+
+  --border: #1f1f22;
+  --border-strong: #2a2a2f;
+  --border-soft: #18181c;
+
+  --fg: #ececec;
+  --fg-dim: #b5b5bc;
+  --fg-muted: #7c7c84;
+  --fg-faint: #54545b;
+
+  --accent: #f59e0b;
+  --accent-hi: #fbbf24;
+  --accent-dim: #b47208;
+  --accent-bg: rgba(245, 158, 11, 0.1);
+  --accent-bd: rgba(245, 158, 11, 0.3);
+
+  --m-get: #4ade80;
+  --m-post: #fbbf24;
+  --m-put: #60a5fa;
+  --m-patch: #a78bfa;
+  --m-delete: #f87171;
+  --m-other: #94a3b8;
+
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --err: #f87171;
+
+  --j-key: #e6e6e6;
+  --j-string: #a7e2b5;
+  --j-number: #e2c58a;
+  --j-bool: #a0bffb;
+  --j-null: #c58fe6;
+  --j-punct: #6e6e76;
+
+  --r-badge: 4px;
+  --r-ctrl: 6px;
+  --r-panel: 8px;
+
+  --ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  --row-h: 26px;
+  --row-h-lg: 30px;
+
+  color-scheme: dark;
+}
+
+/* Reset basics */
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ui);
+  font-feature-settings: "ss01", "cv11", "calt";
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  /* Prevent native drag-select of UI text — tauri desktop feel */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-feature-settings: "calt" 0;
+}
+
+/* ----------------------------------------------------------------
+   Component primitives — direct port of design_artifacts/tokens.css
+   These are intentionally plain CSS to keep design-canvas parity.
+   ---------------------------------------------------------------- */
+
+/* Buttons */
+.ap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg);
+  font: 500 12px/1 var(--ui);
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+.ap-btn:hover {
+  background: var(--hover);
+  border-color: var(--border-strong);
+}
+.ap-btn:active {
+  background: var(--selected);
+}
+.ap-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.ap-btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--fg-dim);
+}
+.ap-btn.ghost:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+.ap-btn.cta {
+  background: linear-gradient(180deg, #f5a623 0%, #e08f0b 100%);
+  border-color: #c57e07;
+  color: #1a1102;
+  font-weight: 600;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+}
+.ap-btn.cta:hover {
+  background: linear-gradient(180deg, #ffb13b 0%, #ed9a12 100%);
+}
+.ap-btn.sm {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.ap-btn.icon {
+  width: 26px;
+  padding: 0;
+}
+.ap-btn.icon.sm {
+  width: 22px;
+}
+
+/* Inputs */
+.ap-input {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font: 12px/1 var(--ui);
+  outline: none;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.ap-input:focus {
+  border-color: var(--accent-bd);
+  background: var(--surface-2);
+}
+.ap-input::placeholder {
+  color: var(--fg-faint);
+}
+
+/* Method badge */
+.ap-method {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: var(--r-badge);
+  display: inline-block;
+  min-width: 36px;
+  text-align: center;
+}
+.ap-method.GET {
+  color: var(--m-get);
+  background: color-mix(in srgb, var(--m-get) 12%, transparent);
+}
+.ap-method.POST {
+  color: var(--m-post);
+  background: color-mix(in srgb, var(--m-post) 14%, transparent);
+}
+.ap-method.PUT {
+  color: var(--m-put);
+  background: color-mix(in srgb, var(--m-put) 14%, transparent);
+}
+.ap-method.PATCH {
+  color: var(--m-patch);
+  background: color-mix(in srgb, var(--m-patch) 14%, transparent);
+}
+.ap-method.DELETE {
+  color: var(--m-delete);
+  background: color-mix(in srgb, var(--m-delete) 14%, transparent);
+}
+.ap-method.HEAD,
+.ap-method.OPTIONS {
+  color: var(--m-other);
+  background: color-mix(in srgb, var(--m-other) 14%, transparent);
+}
+
+/* Tabs */
+.ap-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 8px;
+}
+.ap-tab {
+  height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12px/1 var(--ui);
+  color: var(--fg-muted);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  letter-spacing: -0.005em;
+}
+.ap-tab:hover {
+  color: var(--fg-dim);
+}
+.ap-tab.active {
+  color: var(--fg);
+}
+.ap-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 1px;
+  background: var(--accent);
+}
+.ap-tab .count {
+  font-size: 10px;
+  color: var(--fg-faint);
+  background: var(--surface-2);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.ap-tab.active .count {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+/* Status pill */
+.ap-status {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: var(--r-badge);
+  letter-spacing: 0.02em;
+}
+.ap-status.ok {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+.ap-status.warn {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.ap-status.err {
+  color: var(--err);
+  background: color-mix(in srgb, var(--err) 12%, transparent);
+}
+
+/* Resizer (vertical splitter) */
+.ap-resizer {
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+.ap-resizer:hover,
+.ap-resizer.dragging {
+  background: var(--accent-bd);
+}
+
+.ap-resizer-h {
+  height: 4px;
+  width: 100%;
+  cursor: row-resize;
+  background: var(--border);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.ap-resizer-h:hover,
+.ap-resizer-h.dragging {
+  background: var(--accent-bd);
+}
+.ap-resizer-h::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+/* List rows */
+.ap-row {
+  display: flex;
+  align-items: center;
+  height: var(--row-h);
+  padding: 0 8px;
+  font: 12px/1 var(--ui);
+  color: var(--fg-dim);
+  cursor: default;
+  position: relative;
+  border-radius: 5px;
+}
+.ap-row:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+.ap-row.active {
+  background: var(--selected);
+  color: var(--fg);
+}
+.ap-row.active::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* Section label */
+.ap-sec {
+  font: 600 10px/1 var(--ui);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-faint);
+  padding: 6px 8px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Traffic lights — clickable, drive real window actions in TitleBar.svelte.
+   Icons (× − ⤢) reveal on group hover to mirror native macOS behaviour. */
+.ap-traffic {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0 8px;
+}
+.ap-traffic .tl {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0.5px solid rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.7);
+  font: 700 9px/1 "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+  outline: none;
+  transition: filter 0.1s ease;
+}
+.ap-traffic .tl:hover {
+  filter: brightness(1.1);
+}
+.ap-traffic .tl:active {
+  filter: brightness(0.9);
+}
+.ap-traffic .tl:focus-visible {
+  outline: 2px solid var(--accent-bd);
+  outline-offset: 2px;
+}
+.ap-traffic .tl.r {
+  background: #ff5f57;
+}
+.ap-traffic .tl.y {
+  background: #febc2e;
+}
+.ap-traffic .tl.g {
+  background: #28c840;
+}
+/* Per-button glyph drawn via ::after; invisible until the group is hovered.
+   Symbols match what macOS shows: × / − / ⤢ (the diagonal arrows). */
+.ap-traffic .tl::after {
+  content: "";
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  pointer-events: none;
+}
+.ap-traffic:hover .tl::after {
+  opacity: 1;
+}
+.ap-traffic .tl.r::after {
+  content: "×";
+  font-size: 11px;
+  margin-top: -1px;
+}
+.ap-traffic .tl.y::after {
+  content: "−";
+  font-size: 12px;
+  margin-top: -1px;
+}
+.ap-traffic .tl.g::after {
+  content: "⤢";
+  font-size: 8px;
+}
+
+/* Keyboard hint */
+.ap-kbd {
+  font: 500 10px/1 var(--mono);
+  color: var(--fg-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 5px;
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #26262b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #34343a;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Override dot indicator (env panel) */
+.ap-override-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------------------------------
+   JSON viewer (Phase 4) — custom renderer for response Pretty tab.
+   Ported from design_artifacts/tokens.css; the React mockup is in
+   design_artifacts/json-view.jsx.
+   ---------------------------------------------------------------- */
+
+.jv {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 20px;
+  color: var(--fg);
+  letter-spacing: 0;
+}
+.jv-line {
+  display: flex;
+  align-items: flex-start;
+  padding-right: 8px;
+  position: relative;
+}
+.jv-line:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+.jv-line.match {
+  background: rgba(245, 158, 11, 0.06);
+}
+.jv-line.match-active {
+  background: rgba(245, 158, 11, 0.18);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.jv-no {
+  flex: 0 0 36px;
+  text-align: right;
+  padding-right: 10px;
+  color: var(--fg-faint);
+  user-select: none;
+  font-size: 11px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.jv-gutter {
+  flex: 0 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+}
+.jv-fold-btn {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--fg-muted);
+  cursor: pointer;
+  border-radius: 3px;
+}
+.jv-fold-btn:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+.jv-content {
+  flex: 1 1 auto;
+  white-space: pre;
+  min-width: 0;
+}
+.jv-foldlabel {
+  font-style: italic;
+  color: var(--fg-faint);
+  background: var(--surface-2);
+  padding: 0 6px;
+  border-radius: 3px;
+  margin: 0 4px;
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 11px;
+}
+.jv-foldlabel:hover {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+.jv-copy {
+  position: absolute;
+  right: 8px;
+  top: 1px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.jv-line:hover .jv-copy {
+  opacity: 1;
+}
+.jv-copy:hover {
+  color: var(--accent);
+  border-color: var(--accent-bd);
+}
+.jv mark {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.jv .match-active mark {
+  background: var(--accent);
+  color: #1a1102;
+}
+
+.j-key {
+  color: var(--j-key);
+}
+.j-string {
+  color: var(--j-string);
+}
+.j-number {
+  color: var(--j-number);
+}
+.j-bool {
+  color: var(--j-bool);
+}
+.j-null {
+  color: var(--j-null);
+}
+.j-punct {
+  color: var(--j-punct);
+}
+.j-ws {
+  color: transparent;
+}
+
+/* ----------------------------------------------------------------
+   CodeMirror lint styling.
+
+   - Gutter marker: our own red dot with a `!` in the middle (built via
+     background + ::after; the native SVG/triangle/whatever CM ships is
+     blanked out).
+   - Inline range mark: hidden (display: none). The gutter dot is the
+     single visual indicator; this also kills the second hover tooltip
+     that would otherwise fire on the underlined glyph.
+   - Tooltip on hover: restyled to match our design tokens (used by both
+     gutter and linter tooltips — but the linter tooltip is disabled at
+     source via `tooltipFilter` in CodeMirrorEditor.svelte).
+   ---------------------------------------------------------------- */
+
+/* --- Gutter marker --------------------------------------------------- */
+
+.cm-editor .cm-gutter-lint {
+  width: 18px;
+}
+.cm-editor .cm-gutter-lint .cm-gutterElement {
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.cm-editor .cm-lint-marker {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  margin: 0 !important;
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+/* Blank out anything CodeMirror's own theme tries to render inside
+   the marker (default SVG / triangles / nested icons). Pseudo-elements
+   aren't matched by `*` so our ::after with the exclamation mark stays. */
+.cm-editor .cm-lint-marker * {
+  display: none !important;
+}
+
+.cm-editor .cm-lint-marker-error {
+  background: var(--err) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--err) 22%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18) !important;
+}
+.cm-editor .cm-lint-marker-error::after {
+  content: "!";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 9px / 1 var(--ui);
+  color: #fff;
+}
+.cm-editor .cm-lint-marker-warning {
+  background: var(--warn) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--warn) 22%, transparent),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.18) !important;
+}
+.cm-editor .cm-lint-marker-info {
+  background: var(--accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
+
+/* --- Inline range mark — hidden ------------------------------------- */
+
+.cm-editor .cm-diagnostic-error,
+.cm-editor .cm-diagnostic-warning,
+.cm-editor .cm-lintRange,
+.cm-editor .cm-lintRange-error,
+.cm-editor .cm-lintRange-warning,
+.cm-editor .cm-lintRange-info,
+.cm-editor .cm-lintPoint,
+.cm-editor .cm-lintPoint-error,
+.cm-editor .cm-lintPoint-warning {
+  text-decoration: none !important;
+  background: transparent !important;
+  pointer-events: none !important;
+}
+
+/* --- Tooltip on hover ----------------------------------------------- */
+
+/* Tooltip shown on hovering the gutter marker. */
+.cm-tooltip.cm-tooltip-lint {
+  background: var(--elevated) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 6px !important;
+  padding: 0 !important;
+  color: var(--fg) !important;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+  max-width: 360px;
+  font-family: var(--ui);
+}
+.cm-tooltip-lint .cm-diagnostic {
+  padding: 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  border-bottom: 1px solid var(--border-soft);
+  border-left: 3px solid transparent;
+}
+.cm-tooltip-lint .cm-diagnostic:last-child {
+  border-bottom: 0;
+}
+.cm-tooltip-lint .cm-diagnostic-error {
+  border-left-color: var(--err);
+  color: var(--err);
+}
+.cm-tooltip-lint .cm-diagnostic-warning {
+  border-left-color: var(--warn);
+  color: var(--warn);
+}
