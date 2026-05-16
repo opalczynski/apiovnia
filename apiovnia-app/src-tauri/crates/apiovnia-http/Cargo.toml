@@ -1,0 +1,23 @@
+[package]
+name = "apiovnia-http"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Apiovnia — HTTP request executor (reqwest)."
+
+[dependencies]
+apiovnia-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+url.workspace = true
+mime.workspace = true
+chrono.workspace = true
+base64.workspace = true
+
+[lints]
+workspace = true

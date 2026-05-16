@@ -1,0 +1,101 @@
+[workspace]
+members = [".", "crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Apiovnia"]
+rust-version = "1.78"
+
+[workspace.dependencies]
+# Internal crates
+apiovnia-core = { path = "crates/apiovnia-core" }
+apiovnia-storage = { path = "crates/apiovnia-storage" }
+apiovnia-http = { path = "crates/apiovnia-http" }
+apiovnia-crypto = { path = "crates/apiovnia-crypto" }
+apiovnia-openapi = { path = "crates/apiovnia-openapi" }
+
+# Common runtime
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+anyhow = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "fs"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Domain-specific (used by individual crates / phases — pinned here so we
+# don't bump versions in five places)
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "sqlite",
+    "macros",
+    "migrate",
+    "chrono",
+] }
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+    "json",
+    "gzip",
+    "stream",
+    "multipart",
+] }
+url = "2"
+mime = "0.3"
+base64 = "0.22"
+aes-gcm = "0.10"
+argon2 = "0.5"
+zeroize = { version = "1", features = ["derive"] }
+rand = "0.8"
+oas3 = "0.16"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"
+
+# ----------------------------------------------------------------------------
+# apiovnia-tauri — the binary. Thin layer that wires the Tauri runtime to the
+# domain crates and exposes the IPC commands. No business logic here.
+# ----------------------------------------------------------------------------
+
+[package]
+name = "apiovnia-tauri"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Apiovnia desktop app — Tauri runtime + IPC layer"
+
+[lib]
+# `_lib` suffix avoids the bin/lib name collision on Windows
+# (see https://github.com/rust-lang/cargo/issues/8519)
+name = "apiovnia_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+apiovnia-core.workspace = true
+apiovnia-storage.workspace = true
+apiovnia-http.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
