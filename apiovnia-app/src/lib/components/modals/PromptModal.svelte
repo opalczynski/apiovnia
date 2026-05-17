@@ -81,6 +81,9 @@
         bind:this={inputEl}
         bind:value
         class="ap-input field"
+        class:mono={opts.kind === "password"}
+        type={opts.kind === "password" ? "password" : "text"}
+        autocomplete={opts.kind === "password" ? "off" : undefined}
         placeholder={opts.placeholder ?? ""}
         onkeydown={onKeydown}
       />

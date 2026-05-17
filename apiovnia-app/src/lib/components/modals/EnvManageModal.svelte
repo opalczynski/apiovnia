@@ -1,8 +1,9 @@
 <!--
   EnvManageModal — left-rail env list, right-pane variable editor.
-  Master-password sealing (Phase 6) will plug into the "Lock with password"
-  button shown next to `requires_unlock` env. For now the button is
-  scaffolded (toggle is greyed with a "soon" hint).
+  Phase 6 wires the "Lock with password" action: it opens
+  `SetEnvPasswordModal` for plaintext envs and exposes a destructive
+  "Disable encryption" for sealed envs. Locked envs render a lock screen
+  instead of the variable editor.
 -->
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
@@ -43,6 +44,13 @@
   const focusedVars = $derived<EnvVariable[]>(
     focused ? app.envVariablesFor(focused) : [],
   );
+  const focusedLocked = $derived<boolean>(
+    focused ? app.isEnvLocked(focused) : false,
+  );
+
+  // "Enable encryption" + "Disable encryption" flows live in the store now
+  // so the command palette can fire them from anywhere. This modal just
+  // dispatches to them.
 
   async function newEnv() {
     const name = await dialogs.prompt({
@@ -202,12 +210,69 @@
           <div class="pane-head">
             <div class="pane-title">
               Variables in <b>{focusedEnv.name}</b>
+              {#if focusedEnv.isEncrypted}
+                <span
+                  class="seal-pill"
+                  class:locked={focusedLocked}
+                  title={focusedLocked ? "Locked — unlock to view" : "Decrypted in memory for this session"}
+                >
+                  <Icon d={focusedLocked ? IC.lock : IC.unlock} size={10} />
+                  <span>{focusedLocked ? "locked" : "unlocked"}</span>
+                </span>
+              {/if}
             </div>
             <span class="grow"></span>
-            <button class="ap-btn sm ghost" disabled title="Master-password sealing arrives in Phase 6">
-              <Icon d={IC.lock} size={11} /><span>Lock env… (soon)</span>
-            </button>
+            {#if !focusedEnv.isEncrypted}
+              <button
+                class="ap-btn sm ghost"
+                onclick={() => app.openEnvPasswordSetup(focusedEnv.id)}
+                title="Encrypt every variable + override with a master password"
+              >
+                <Icon d={IC.lock} size={11} /><span>Enable encryption…</span>
+              </button>
+            {:else if focusedLocked}
+              <button
+                class="ap-btn sm cta"
+                onclick={() => app.promptUnlock(focusedEnv.id)}
+              >
+                <Icon d={IC.unlock} size={11} /><span>Unlock…</span>
+              </button>
+            {:else}
+              <button
+                class="ap-btn sm ghost"
+                onclick={() => void app.lockEnv(focusedEnv.id)}
+                title="Drop the session key"
+              >
+                <Icon d={IC.lock} size={11} /><span>Lock</span>
+              </button>
+              <button
+                class="ap-btn sm ghost"
+                onclick={() => void app.disableEncryptionWithPrompt(focusedEnv.id, focusedEnv.name)}
+                title="Decrypt back to plaintext (requires current password)"
+              >
+                <span>Disable encryption…</span>
+              </button>
+            {/if}
           </div>
+
+          {#if focusedEnv.isEncrypted && focusedLocked}
+            <div class="lock-screen">
+              <div class="lock-icon">
+                <Icon d={IC.lock} size={20} />
+              </div>
+              <div class="lock-title">{focusedEnv.name} is locked</div>
+              <div class="lock-msg">
+                Every variable in this environment is encrypted at rest. Unlock
+                with your master password to view and edit.
+              </div>
+              <button
+                class="ap-btn cta"
+                onclick={() => app.promptUnlock(focusedEnv.id)}
+              >
+                <Icon d={IC.unlock} size={13} /><span>Unlock {focusedEnv.name}</span>
+              </button>
+            </div>
+          {:else}
 
           <div class="vars">
             <div class="vars-head">
@@ -291,6 +356,7 @@
               </button>
             </div>
           </div>
+          {/if}
         {/if}
       </section>
     </div>
@@ -302,6 +368,7 @@
     </footer>
   </div>
 </dialog>
+
 
 <style>
   .modal {
@@ -582,5 +649,70 @@
     height: 28px;
     padding: 0 14px;
     font-size: 12px;
+  }
+
+  /* Phase 6: encryption status pill + locked-env lock screen. */
+  .seal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    padding: 1px 6px 1px 5px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    border: 1px solid var(--accent-bd);
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .seal-pill.locked {
+    color: var(--fg-faint);
+    background: color-mix(in srgb, var(--fg-faint) 12%, transparent);
+    border-color: color-mix(in srgb, var(--fg-faint) 30%, transparent);
+  }
+  .lock-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .lock-screen .lock-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.18),
+      rgba(245, 158, 11, 0.06)
+    );
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .lock-screen .lock-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .lock-screen .lock-msg {
+    font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.5;
+    max-width: 360px;
+  }
+  .lock-screen .ap-btn {
+    height: 32px;
+    padding: 0 14px;
+    font-size: 12px;
+    margin-top: 6px;
   }
 </style>

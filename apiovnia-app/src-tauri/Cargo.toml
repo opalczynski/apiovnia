@@ -19,7 +19,11 @@ apiovnia-openapi = { path = "crates/apiovnia-openapi" }
 
 # Common runtime
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `preserve_order` swaps the inner map for IndexMap so JSON object keys
+# round-trip in their original order — needed by Python `requests` /
+# HTTPie / JS / PowerShell snippets so the rendered body matches what
+# the user typed, not an alphabetical re-sort.
+serde_json = { version = "1", features = ["preserve_order"] }
 thiserror = "1"
 anyhow = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "fs"] }
@@ -50,7 +54,10 @@ aes-gcm = "0.10"
 argon2 = "0.5"
 zeroize = { version = "1", features = ["derive"] }
 rand = "0.8"
-oas3 = "0.16"
+oas3 = { version = "0.16", features = ["yaml-spec"] }
+# Dropbox-style password strength estimator: scores 0..=4 based on dictionaries,
+# l33t substitutions, keyboard walks, dates. Drives the master-password meter.
+zxcvbn = "3"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -91,11 +98,15 @@ tauri-plugin-dialog = "2"
 apiovnia-core.workspace = true
 apiovnia-storage.workspace = true
 apiovnia-http.workspace = true
+apiovnia-crypto.workspace = true
+apiovnia-openapi.workspace = true
+chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 tokio.workspace = true
+sqlx.workspace = true
 
 [lints]
 workspace = true

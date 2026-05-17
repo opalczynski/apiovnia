@@ -41,6 +41,16 @@
     void app.selectEnv(id);
   }
 
+  function unlock(id: EnvironmentId) {
+    menuOpen = false;
+    app.promptUnlock(id);
+  }
+
+  function lock(id: EnvironmentId) {
+    menuOpen = false;
+    void app.lockEnv(id);
+  }
+
   async function newEnv() {
     menuOpen = false;
     const name = await dialogs.prompt({
@@ -59,11 +69,14 @@
 
   function dotColor(env: Environment | null): string {
     if (!env) return "var(--fg-muted)";
-    if (env.requiresUnlock) return "var(--fg-faint)";
+    if (env.isEncrypted && app.isEnvLocked(env.id)) return "var(--fg-faint)";
     return envColor(env.name);
   }
 
   const active = $derived(app.activeEnv);
+  const activeLocked = $derived<boolean>(
+    active ? app.isEnvLocked(active.id) : false,
+  );
 </script>
 
 <button
@@ -74,14 +87,18 @@
   disabled={!app.activeProjectId}
   title={app.activeProjectId
     ? active
-      ? `Active environment: ${active.name}`
+      ? activeLocked
+        ? `${active.name} — locked. Click to unlock.`
+        : `Active environment: ${active.name}`
       : "No environment selected — request uses base values"
     : "Pick a project to manage environments"}
 >
   <span class="env-dot" style:background={dotColor(active)}></span>
   <span class="env-name">{active?.name ?? "no env"}</span>
-  {#if active?.requiresUnlock}
-    <span class="muted"><Icon d={IC.lock} size={12} /></span>
+  {#if active?.isEncrypted}
+    <span class="muted" title={activeLocked ? "Locked" : "Unlocked this session"}>
+      <Icon d={activeLocked ? IC.lock : IC.unlock} size={12} />
+    </span>
   {/if}
   <span class="muted"><Icon d={IC.caret} size={12} /></span>
 </button>
@@ -105,16 +122,49 @@
 
     {#each app.envs as e (e.id)}
       {@const isActive = active?.id === e.id}
-      <button class="menu-row" class:active={isActive} onclick={() => pick(e.id)}>
-        <span class="env-dot" style:background={dotColor(e)}></span>
-        <span class="row-label">{e.name}</span>
-        {#if e.requiresUnlock}
-          <span class="row-lock"><Icon d={IC.lock} size={11} /></span>
+      {@const locked = app.isEnvLocked(e.id)}
+      <div class="row-wrap" class:active={isActive}>
+        <button class="menu-row" onclick={() => pick(e.id)}>
+          <span class="env-dot" style:background={dotColor(e)}></span>
+          <span class="row-label">{e.name}</span>
+          {#if e.isEncrypted}
+            <span
+              class="row-lock"
+              title={locked ? "Encrypted — locked" : "Encrypted — unlocked this session"}
+            >
+              <Icon d={locked ? IC.lock : IC.unlock} size={11} />
+            </span>
+          {/if}
+          {#if isActive}
+            <span class="row-check"><Icon d={IC.check} size={11} /></span>
+          {/if}
+        </button>
+        {#if e.isEncrypted}
+          {#if locked}
+            <button
+              class="row-action"
+              title="Unlock with master password"
+              onclick={(ev) => {
+                ev.stopPropagation();
+                unlock(e.id);
+              }}
+            >
+              <Icon d={IC.unlock} size={11} />
+            </button>
+          {:else}
+            <button
+              class="row-action"
+              title="Lock (drop session key)"
+              onclick={(ev) => {
+                ev.stopPropagation();
+                lock(e.id);
+              }}
+            >
+              <Icon d={IC.lock} size={11} />
+            </button>
+          {/if}
         {/if}
-        {#if isActive}
-          <span class="row-check"><Icon d={IC.check} size={11} /></span>
-        {/if}
-      </button>
+      </div>
     {/each}
 
     <div class="menu-sep"></div>
@@ -245,5 +295,51 @@
   .row-icon {
     display: inline-flex;
     color: var(--fg-muted);
+  }
+
+  /* Row + side action button (unlock / lock) — match menu-row sizing. */
+  .row-wrap {
+    display: flex;
+    align-items: stretch;
+    border-radius: 5px;
+  }
+  .row-wrap:hover {
+    background: var(--hover);
+  }
+  .row-wrap.active {
+    background: transparent;
+  }
+  .row-wrap .menu-row {
+    flex: 1;
+  }
+  .row-wrap:hover .menu-row,
+  .row-wrap.active .menu-row {
+    background: transparent;
+  }
+  .row-wrap.active .menu-row {
+    color: var(--fg);
+  }
+  .row-wrap.active .row-label {
+    font-weight: 600;
+  }
+  .row-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    background: transparent;
+    border: 0;
+    color: var(--fg-muted);
+    cursor: pointer;
+    border-radius: 5px;
+    opacity: 0;
+    transition: opacity 0.12s, color 0.12s, background 0.12s;
+  }
+  .row-wrap:hover .row-action {
+    opacity: 1;
+  }
+  .row-action:hover {
+    color: var(--accent);
+    background: var(--surface-2);
   }
 </style>

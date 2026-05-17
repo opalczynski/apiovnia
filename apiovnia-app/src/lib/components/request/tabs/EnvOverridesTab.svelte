@@ -122,6 +122,20 @@
       this request.
     </div>
   </div>
+{:else if env.isEncrypted && app.isEnvLocked(env.id)}
+  <div class="empty">
+    <div class="lock-glow">
+      <Icon d={IC.lock} size={18} />
+    </div>
+    <div class="empty-title">{env.name} is locked</div>
+    <div class="empty-msg">
+      Override values for this env are encrypted at rest. Unlock with your
+      master password to view and edit them.
+    </div>
+    <button class="ap-btn cta" onclick={() => app.promptUnlock(env.id)}>
+      <Icon d={IC.unlock} /><span>Unlock {env.name}</span>
+    </button>
+  </div>
 {:else}
   <div class="root">
     <div class="bar">
@@ -424,6 +438,22 @@
     padding: 1px 5px;
     border-radius: 3px;
     color: var(--accent);
+  }
+  .lock-glow {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.18),
+      rgba(245, 158, 11, 0.06)
+    );
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    margin-bottom: 4px;
   }
 
   .bar {

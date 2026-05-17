@@ -3,8 +3,10 @@
 //! adapts between Tauri's invoke signature and the repository API.
 
 pub mod collections;
+pub mod crypto;
 pub mod environments;
 pub mod execution;
+pub mod openapi;
 pub mod overrides;
 pub mod projects;
 pub mod requests;

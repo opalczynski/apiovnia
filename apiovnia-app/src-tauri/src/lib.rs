@@ -67,6 +67,17 @@ pub fn run() {
             commands::overrides::delete_override,
             commands::execution::execute_request,
             commands::execution::get_last_response,
+            commands::execution::build_request_snippet,
+            commands::crypto::enable_env_encryption,
+            commands::crypto::disable_env_encryption,
+            commands::crypto::unlock_env,
+            commands::crypto::lock_env,
+            commands::crypto::is_env_unlocked,
+            commands::crypto::list_unlocked_envs,
+            commands::crypto::score_password,
+            commands::openapi::import_openapi,
+            commands::openapi::export_collection_openapi,
+            commands::openapi::save_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

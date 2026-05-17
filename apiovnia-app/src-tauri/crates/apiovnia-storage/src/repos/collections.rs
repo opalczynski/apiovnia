@@ -28,6 +28,25 @@ impl CollectionRepo {
         Ok(rows.into_iter().map(Row::into_domain).collect())
     }
 
+    /// Insert a fully-formed collection (id + timestamps caller-supplied).
+    /// Used by `OpenAPI` import which generates the id ahead of time so the
+    /// request rows can already reference it.
+    pub async fn insert_full(pool: &SqlitePool, c: &Collection) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO collections (id, project_id, name, sort_order, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(c.id.as_str())
+        .bind(c.project_id.as_str())
+        .bind(&c.name)
+        .bind(c.sort_order)
+        .bind(c.created_at)
+        .bind(c.updated_at)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn get(pool: &SqlitePool, id: &CollectionId) -> Result<Collection> {
         let row = sqlx::query_as::<_, Row>(
             "SELECT id, project_id, name, created_at, updated_at, sort_order \
