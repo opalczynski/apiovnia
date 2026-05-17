@@ -19,6 +19,7 @@ import type {
   EnvVariable,
   ExecutionResult,
   ExportResult,
+  HistoryRow,
   ImportResult,
   PasswordStrength,
   Project,
@@ -149,6 +150,16 @@ export const getLastResponse = (
   requestId: RequestId,
 ): Promise<ExecutionResult | null> =>
   invoke("get_last_response", { requestId });
+
+/** Recent execution history, newest first. Default limit 200. */
+export const listHistory = (limit?: number): Promise<HistoryRow[]> =>
+  invoke("list_history", { limit: limit ?? null });
+
+/** Rehydrate a stored history row into the full ExecutionResult shape. */
+export const getHistoryResponse = (
+  historyId: string,
+): Promise<ExecutionResult | null> =>
+  invoke("get_history_response", { historyId });
 
 /**
  * Build a paste-ready code snippet (curl / Python requests / HTTPie /

@@ -490,7 +490,8 @@
     gap: 6px;
     flex: 1;
     max-width: 420px;
-    color: var(--fg-faint);
+    /* Container colour drives the search icon next to the input. */
+    color: var(--fg-muted);
   }
   .search-input {
     flex: 1;

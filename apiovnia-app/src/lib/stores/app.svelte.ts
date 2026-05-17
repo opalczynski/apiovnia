@@ -24,6 +24,7 @@ import type {
   EnvVariable,
   ExecutionResult,
   ExportResult,
+  HistoryRow,
   Project,
   ProjectId,
   Request,
@@ -129,7 +130,7 @@ const state = $state({
     /** Optional retry callback to fire on successful unlock. */
     retry?: () => void | Promise<void>;
   } | null,
-  /** ⌘K command palette visibility. The component owns its own search /
+  /** ⌘P command palette visibility. The component owns its own search /
    *  catalog state; we only flip this here so any module (keymap, store
    *  action, button click) can toggle. */
   commandPaletteOpen: false,
@@ -148,6 +149,11 @@ const state = $state({
    *  Triggered from EnvManageModal's "Enable encryption" button AND from
    *  the command palette's per-env action. */
   envPasswordSetupId: null as EnvironmentId | null,
+  /** History panel (Phase 9) — slide-in overlay from the left, shows the
+   *  last ~200 executions. Loaded lazily on first open. */
+  historyPanelOpen: false,
+  historyEntries: [] as HistoryRow[],
+  historyLoading: false,
   loading: false,
   error: null as string | null,
   /**
@@ -1202,6 +1208,74 @@ async function deleteRequest(id: RequestId): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// History (Phase 9)
+// ---------------------------------------------------------------------------
+
+async function refreshHistory(): Promise<void> {
+  state.historyLoading = true;
+  try {
+    state.historyEntries = await ipc.listHistory(200);
+  } catch (e) {
+    setError(e);
+  } finally {
+    state.historyLoading = false;
+  }
+}
+
+async function openHistoryPanel(): Promise<void> {
+  state.historyPanelOpen = true;
+  await refreshHistory();
+}
+
+function closeHistoryPanel(): void {
+  state.historyPanelOpen = false;
+}
+
+async function toggleHistoryPanel(): Promise<void> {
+  if (state.historyPanelOpen) {
+    closeHistoryPanel();
+  } else {
+    await openHistoryPanel();
+  }
+}
+
+/**
+ * Open a stored history entry: navigates to the originating request (if
+ * still present) and rehydrates that row's response into the right pane.
+ * If the request was deleted we still surface the saved response.
+ */
+async function openHistoryEntry(entry: HistoryRow): Promise<void> {
+  closeHistoryPanel();
+
+  // Navigate first — selectRequest reloads the body + last response from
+  // history, which would otherwise blow away the row we're about to open.
+  // We override `currentResponse` afterwards.
+  if (entry.projectId && entry.collectionId && entry.requestId) {
+    try {
+      await navigateToRequest(entry.projectId, entry.collectionId, entry.requestId);
+    } catch (e) {
+      // Request/collection/project was deleted — non-fatal, we still show
+      // the saved response below.
+      // eslint-disable-next-line no-console
+      console.warn("[apiovnia] couldn't navigate to history entry's request", e);
+    }
+  }
+
+  try {
+    const result = await ipc.getHistoryResponse(entry.id);
+    if (result) {
+      state.currentResponse = result;
+      state.executionError = null;
+    }
+  } catch (e) {
+    showToast(
+      `Couldn't load history entry: ${e instanceof Error ? e.message : String(e)}`,
+      "err",
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public proxy — getters bind reactivity, actions are plain functions.
 // ---------------------------------------------------------------------------
 
@@ -1352,4 +1426,19 @@ export const app = {
   openEnvPasswordSetup,
   closeEnvPasswordSetup,
   disableEncryptionWithPrompt,
+  // History panel (Phase 9)
+  get historyPanelOpen() {
+    return state.historyPanelOpen;
+  },
+  get historyEntries() {
+    return state.historyEntries;
+  },
+  get historyLoading() {
+    return state.historyLoading;
+  },
+  openHistoryPanel,
+  closeHistoryPanel,
+  toggleHistoryPanel,
+  openHistoryEntry,
+  refreshHistory,
 };

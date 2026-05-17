@@ -28,5 +28,7 @@
     flex: 1;
     overflow: auto;
     background: var(--bg);
+    /* Breathing room so the first table row doesn't hug the tab divider. */
+    padding-top: 8px;
   }
 </style>

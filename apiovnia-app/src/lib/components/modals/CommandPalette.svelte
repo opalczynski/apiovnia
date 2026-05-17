@@ -1,5 +1,5 @@
 <!--
-  CommandPalette — ⌘K / Ctrl+K spotlight-style switcher.
+  CommandPalette — ⌘P / Ctrl+P spotlight-style switcher.
 
   Scope on open: requests across every collection of the active project +
   collections + every project + active project's envs + a small set of
@@ -315,7 +315,7 @@
 
     // Contextual: copy the *currently selected* request as one of the
     // five snippet formats. One palette entry per format so power users
-    // can `⌘K → "python" → ↵` without going through the right-click menu.
+    // can `⌘P → "python" → ↵` without going through the right-click menu.
     // Disabled when nothing's selected — entries stay visible so users
     // discover them.
     const activeReq = app.activeRequest;
@@ -657,13 +657,13 @@
     font-family: var(--ui);
   }
   .search-input::placeholder {
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
   .search-kbd {
     font-family: var(--mono);
     font-size: 10px;
     padding: 2px 6px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 3px;
@@ -722,7 +722,7 @@
   }
   .row-hint {
     font-size: 11px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
     font-family: var(--mono);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -742,7 +742,7 @@
   .status-hint {
     margin-top: 6px;
     font-size: 11px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
 
   .foot {
@@ -753,7 +753,7 @@
     border-top: 1px solid var(--border-soft);
     background: var(--surface-2);
     font-size: 11px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
   .foot-hint {
     display: flex;

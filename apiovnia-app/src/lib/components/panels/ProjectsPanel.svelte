@@ -18,7 +18,8 @@
   // ---------------------------------------------------------------------------
   // Filter — case-insensitive substring match over project + collection names.
   // Selection is preserved when filter hides the active row (visual-only).
-  // ⌘P / Ctrl+P focuses the input (per design hint).
+  // ⌘K / Ctrl+K focuses the input (Phase 9.5: swapped from ⌘P; ⌘P now
+  // opens the command palette to match Postman/Insomnia conventions).
   // ---------------------------------------------------------------------------
 
   let filterText = $state("");
@@ -39,7 +40,7 @@
   onMount(() => {
     function handler(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === "p") {
+      if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
         filterEl?.focus();
         filterEl?.select();
@@ -221,6 +222,7 @@
         bind:value={filterText}
         class="ap-input bare"
         placeholder="Filter projects & collections…"
+        data-focus-target="left"
         onkeydown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
@@ -241,7 +243,7 @@
           <Icon d={IC.x} size={11} />
         </button>
       {:else}
-        <span class="ap-kbd">⌘P</span>
+        <span class="ap-kbd">⌘K</span>
       {/if}
     </div>
   </div>
@@ -354,12 +356,35 @@
   <div class="spacer"></div>
 
   <footer class="footer">
-    <div class="avatar">A</div>
+    <!-- Honeycomb mark — mid-size variant matching the TitleBar logo. -->
+    <svg
+      class="avatar"
+      viewBox="0 0 100 100"
+      width="20"
+      height="20"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <polygon
+        points="50,18 78,34 78,66 50,82 22,66 22,34"
+        fill="none"
+        stroke="#F59E0B"
+        stroke-width="7"
+        stroke-linejoin="round"
+      />
+      <circle cx="50" cy="50" r="11" fill="#F59E0B" />
+    </svg>
     <div class="who">
       <div class="who-name">Apiovnia</div>
       <div class="who-sub">Local · SQLite</div>
     </div>
-    <button class="ap-btn icon sm ghost" title="History">
+    <button
+      class="ap-btn icon sm ghost"
+      class:active={app.historyPanelOpen}
+      title="Recent requests"
+      aria-label="Toggle history panel"
+      onclick={() => void app.toggleHistoryPanel()}
+    >
       <Icon d={IC.history} />
     </button>
   </footer>
@@ -441,7 +466,7 @@
     font: 600 10px/1 var(--ui);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
   .header-sub {
     font: 500 11.5px/1.3 var(--ui);
@@ -500,7 +525,7 @@
 
   .no-match {
     padding: 6px 10px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
     font-size: 11px;
     font-style: italic;
   }
@@ -542,16 +567,8 @@
     font-size: 11px;
   }
   .avatar {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    background: linear-gradient(135deg, #f59e0b, #b47208);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 700;
-    color: #1a1102;
+    flex-shrink: 0;
+    display: block;
   }
   .who {
     flex: 1;
@@ -563,6 +580,6 @@
   }
   .who-sub {
     font-size: 10px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
 </style>

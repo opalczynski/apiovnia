@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Apiovnia
+GenericName=REST API Client
+Comment=A keyboard-first, offline REST API client for solo developers
+Exec=apiovnia %U
+Icon=apiovnia
+Terminal=false
+Categories=Development;Network;
+StartupWMClass=apiovnia
+Keywords=API;REST;HTTP;JSON;developer;
