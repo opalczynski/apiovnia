@@ -1,1 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1F1714"></stop><stop offset="1" stop-color="#0B0908"></stop></linearGradient><linearGradient id="glint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.04"></stop><stop offset="0.3" stop-color="#FFFFFF" stop-opacity="0"></stop></linearGradient><clipPath id="sq"><rect x="0" y="0" width="1024" height="1024" rx="230.4" ry="230.4"></rect></clipPath></defs><g clip-path="url(#sq)"><rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"></rect><rect x="0" y="0" width="1024" height="1024" fill="url(#glint)"></rect><g transform="translate(143.36, 143.36) scale(7.3728)"><polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5" stroke-linejoin="round"></polygon><polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3" stroke-linejoin="round"></polygon><circle cx="50" cy="50" r="11" fill="#F59E0B"></circle><ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"></ellipse></g></g></svg>
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Apiovnia app icon — honeycomb mark. Spec: design_artifacts/App Icon - Honeycomb Set.html
+  - 1024×1024 master canvas, 22.5% squircle radius.
+  - Background linear gradient #1F1714 → #0B0908 (top → bottom).
+  - 14% inner padding (so the 100×100 inner viewBox occupies the centre 72% × 72%).
+  - Full variant (used for ≥256px): outer faint hex ring + amber inner hex + filled centre dot + glint highlight.
+-->
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1024"
+    height="1024"
+    viewBox="0 0 1024 1024"
+>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1F1714" />
+      <stop offset="100%" stop-color="#0B0908" />
+    </linearGradient>
+    <linearGradient id="glint" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.04" />
+      <stop offset="30%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle background: 22.5% of 1024 ≈ 230 corner radius -->
+  <rect
+        x="0"
+        y="0"
+        width="1024"
+        height="1024"
+        rx="230"
+        ry="230"
+        fill="url(#bg)"
+    />
+  <!-- Top sheen (matches the design's ::after gloss) -->
+  <rect
+        x="0"
+        y="0"
+        width="1024"
+        height="1024"
+        rx="230"
+        ry="230"
+        fill="url(#glint)"
+    />
+
+  <!-- Honeycomb mark — inner viewBox 100×100 scaled into the centre 72% of the canvas.
+       inset = 14% × 1024 = 143.36 → 143; scale = 1024 - 2×143 = 738. -->
+  <g
+        transform="translate(143 143) scale(7.38)"
+        fill="none"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+    >
+    <!-- Outer faint ring -->
+    <polygon
+            points="50,4 90,27 90,73 50,96 10,73 10,27"
+            fill="none"
+            stroke="#2A2A2F"
+            stroke-width="2.5"
+        />
+    <!-- Amber inner hex -->
+    <polygon
+            points="50,18 78,34 78,66 50,82 22,66 22,34"
+            fill="none"
+            stroke="#F59E0B"
+            stroke-width="3"
+        />
+    <!-- Filled centre dot -->
+    <circle cx="50" cy="50" r="11" fill="#F59E0B" />
+    <!-- Glint on the centre dot -->
+    <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7" />
+  </g>
+</svg>
