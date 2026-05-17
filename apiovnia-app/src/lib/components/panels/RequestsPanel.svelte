@@ -137,6 +137,7 @@
         class="ap-input bare"
         placeholder="Filter requests…"
         bind:value={filterText}
+        data-focus-target="mid"
         onkeydown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
@@ -308,7 +309,7 @@
   .section-label {
     padding: 2px 10px 6px;
     font-size: 10.5px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -317,7 +318,7 @@
     font-weight: 600;
   }
   .dim {
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
 
   .list {
@@ -327,7 +328,7 @@
   }
   .hint {
     padding: 16px 10px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
     font-size: 11.5px;
     font-style: italic;
   }
@@ -356,7 +357,7 @@
   }
   .subtitle {
     font-size: 10.5px;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
     margin-top: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -365,7 +366,7 @@
   .subtitle.placeholder {
     font-style: italic;
     color: var(--fg-faint);
-    opacity: 0.7;
+    opacity: 0.85;
   }
 
   .more {
@@ -450,7 +451,7 @@
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--fg-faint);
+    color: var(--fg-muted);
     font-weight: 600;
   }
   .method-row {

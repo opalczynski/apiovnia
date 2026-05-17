@@ -7,7 +7,7 @@
  *
  * Cross-platform: `Cmd` on macOS, `Ctrl` everywhere else.
  *
- * Context-scoped shortcuts (⌘P focus filter inside ProjectsPanel, ⌘Enter
+ * Context-scoped shortcuts (⌘K focus filter inside ProjectsPanel, ⌘Enter
  * Send inside UrlBar, ⌘F search inside JsonView) live with the components
  * they affect — we don't centralise those because they want to know the
  * caller's local state.
@@ -39,9 +39,11 @@ export function installKeymap(): () => void {
 
     const k = e.key.toLowerCase();
 
-    // ⌘K — toggle command palette. Works from anywhere, including inside
+    // ⌘P — toggle command palette. Works from anywhere, including inside
     // inputs — we want it even when the URL bar has focus.
-    if (k === "k") {
+    // (Phase 9.5: swapped from ⌘K so ⌘K can match Postman/Insomnia muscle
+    // memory for "search the sidebar".)
+    if (k === "p") {
       e.preventDefault();
       if (app.commandPaletteOpen) app.closePalette();
       else app.openPalette();
@@ -54,6 +56,23 @@ export function installKeymap(): () => void {
       if (isEditableTarget(e.target)) return;
       e.preventDefault();
       void newRequestPrompt();
+      return;
+    }
+
+    // ⌘1 / ⌘2 / ⌘3 — focus left/middle/right panel. Targets carry a
+    // `data-focus-target` attribute; we just plumb that through. Works
+    // even inside other inputs — switching focus IS the intent.
+    if (k === "1" || k === "2" || k === "3") {
+      const target =
+        k === "1" ? "left" : k === "2" ? "mid" : "right";
+      const el = document.querySelector<HTMLElement>(
+        `[data-focus-target="${target}"]`,
+      );
+      if (el) {
+        e.preventDefault();
+        el.focus();
+        if (el instanceof HTMLInputElement) el.select();
+      }
       return;
     }
   }

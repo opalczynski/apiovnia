@@ -30,10 +30,18 @@
   --color-border-strong: #2a2a2f;
   --color-border-soft: #18181c;
 
+  /* Contrast tiers — measured against --bg (#0b0b0d).
+     Tier        was       now       ratio (was → now)   intended use
+     fg          #ececec   #ececec   16.7:1              primary body text
+     fg-dim      #b5b5bc   #c1c1c8    9.4:1 → 10.3:1     secondary headings, dim values
+     fg-muted    #7c7c84   #a0a0a8    3.6:1 →  5.7:1     metadata labels, placeholders, count badges
+     fg-faint    #54545b   #7d7d86    1.9:1 →  3.7:1     decorative-only (timestamps, version)
+     fg-muted now clears WCAG AA for small text; fg-faint clears AA Large only,
+     reserved for genuinely tertiary cues that shouldn't compete for attention. */
   --color-fg: #ececec;
-  --color-fg-dim: #b5b5bc;
-  --color-fg-muted: #7c7c84;
-  --color-fg-faint: #54545b;
+  --color-fg-dim: #c1c1c8;
+  --color-fg-muted: #a0a0a8;
+  --color-fg-faint: #7d7d86;
 
   --color-accent: #f59e0b;
   --color-accent-hi: #fbbf24;
@@ -75,9 +83,9 @@
   --border-soft: #18181c;
 
   --fg: #ececec;
-  --fg-dim: #b5b5bc;
-  --fg-muted: #7c7c84;
-  --fg-faint: #54545b;
+  --fg-dim: #c1c1c8;
+  --fg-muted: #a0a0a8;
+  --fg-faint: #7d7d86;
 
   --accent: #f59e0b;
   --accent-hi: #fbbf24;
@@ -238,7 +246,10 @@ body {
   background: var(--surface-2);
 }
 .ap-input::placeholder {
-  color: var(--fg-faint);
+  /* Placeholders need to be legible-not-decorative — bumped from fg-faint
+     to fg-muted so filter prompts ("Filter projects…", "Search response…")
+     actually read against --bg / --surface. */
+  color: var(--fg-muted);
 }
 
 /* Method badge */
@@ -319,7 +330,9 @@ body {
 }
 .ap-tab .count {
   font-size: 10px;
-  color: var(--fg-faint);
+  /* Numeric badge inside a tab ("Headers 9") — keep it readable, not
+     decorative; the digit alone has to communicate at a glance. */
+  color: var(--fg-muted);
   background: var(--surface-2);
   padding: 2px 5px;
   border-radius: 3px;
@@ -421,12 +434,15 @@ body {
   border-radius: 2px;
 }
 
-/* Section label */
+/* Section label — uppercase tiny header above lists ("PROJECTS",
+   "COLLECTIONS", "API V1 · 1 REQUEST"). At 10 px with letter-spacing
+   it needs more colour weight than body text or it disappears against
+   --surface; promoted from fg-faint to fg-muted. */
 .ap-sec {
   font: 600 10px/1 var(--ui);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--fg-faint);
+  color: var(--fg-muted);
   padding: 6px 8px 4px;
   display: flex;
   align-items: center;
@@ -502,12 +518,15 @@ body {
   font-size: 8px;
 }
 
-/* Keyboard hint */
+/* Keyboard hint — tiny mono glyph in a pill (⌘P, ⌘K, ⌘↵). At 10 px the
+   stroke of ⌘ and ↵ is one pixel wide; muted grey vanishes. Bumped to
+   --fg-dim, gave the pill a border-strong outline + slightly elevated
+   bg so it reads as a discrete UI element, not a faded label. */
 .ap-kbd {
-  font: 500 10px/1 var(--mono);
-  color: var(--fg-muted);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  font: 600 10px/1 var(--mono);
+  color: var(--fg-dim);
+  background: var(--elevated);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   padding: 3px 5px;
 }

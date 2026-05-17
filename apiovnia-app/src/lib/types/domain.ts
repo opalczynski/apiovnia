@@ -248,6 +248,33 @@ export type ExportResult = {
   logFilename: string;
 };
 
+// ---------------------------------------------------------------------------
+// History — mirrors `commands::execution::HistoryRowDto`. One row per past
+// invocation of `execute_request`. The full response body lives in storage
+// and is rehydrated on demand via `getHistoryResponse(id)`.
+// ---------------------------------------------------------------------------
+
+export type HistoryRow = {
+  id: string;
+  requestId: RequestId | null;
+  requestName: string | null;
+  projectId: ProjectId | null;
+  projectName: string | null;
+  collectionId: CollectionId | null;
+  collectionName: string | null;
+  environmentId: EnvironmentId | null;
+  environmentName: string | null;
+  /** Epoch millis. */
+  executedAt: number;
+  statusCode: number | null;
+  durationMs: number | null;
+  method: string | null;
+  url: string | null;
+  finalUrl: string | null;
+  contentType: string | null;
+  errorMessage: string | null;
+};
+
 export type ExecutionResult = {
   status: number;
   statusText: string;

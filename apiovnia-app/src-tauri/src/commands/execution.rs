@@ -13,8 +13,8 @@ use apiovnia_core::{
 };
 use apiovnia_http::{ExecutionError, ExecutionResult, HeaderEntry, ResponseBodyKind, SentRequest};
 use apiovnia_storage::{
-    repos::history::NewHistoryEntry, EnvVariableRepo, EnvironmentRepo, HistoryRepo, OverrideRepo,
-    RequestRepo, StorageError,
+    repos::history::{HistoryEntry, NewHistoryEntry},
+    EnvVariableRepo, EnvironmentRepo, HistoryRepo, OverrideRepo, RequestRepo, StorageError,
 };
 use serde::Serialize;
 use tauri::State;
@@ -126,9 +126,160 @@ pub async fn get_last_response(
     let Some(row) = HistoryRepo::latest_success_for(state.db.pool(), &request_id).await? else {
         return Ok(None);
     };
+    Ok(Some(rehydrate(row)))
+}
 
-    // Rehydrate. Anything missing falls back to a sane default — better to
-    // show *something* than nothing.
+/// One row in the History panel (Phase 9). Slim DTO — only the columns
+/// the list needs (status pill / timing / where it points). Bodies live
+/// in storage but only flow back through `get_history_response` when the
+/// user clicks a row.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryRowDto {
+    pub id: String,
+    pub request_id: Option<String>,
+    pub request_name: Option<String>,
+    pub project_id: Option<String>,
+    pub project_name: Option<String>,
+    pub collection_id: Option<String>,
+    pub collection_name: Option<String>,
+    pub environment_id: Option<String>,
+    pub environment_name: Option<String>,
+    pub executed_at: i64,
+    pub status_code: Option<i64>,
+    pub duration_ms: Option<i64>,
+    pub method: Option<String>,
+    pub url: Option<String>,
+    pub final_url: Option<String>,
+    pub content_type: Option<String>,
+    /// Truncated to ~140 chars — only for the secondary line in the row.
+    pub error_message: Option<String>,
+}
+
+/// Recent execution history, newest first. The default limit (200) matches
+/// the design intent; callers can bump it for "show more" if we ever ship that.
+#[tauri::command]
+pub async fn list_history(
+    state: State<'_, AppState>,
+    limit: Option<i64>,
+) -> Result<Vec<HistoryRowDto>, ExecuteError> {
+    let pool = state.db.pool();
+    let lim = limit.unwrap_or(200).clamp(1, 1000);
+    let rows = HistoryRepo::list_recent(pool, lim).await?;
+
+    // Enrich rows with the request/collection/project/env names so the
+    // History panel doesn't need to do N+1 fetches frontend-side. Small
+    // per-call caches keep us at O(distinct ids) lookups, not O(rows).
+    let mut req_cache: std::collections::HashMap<String, Option<apiovnia_core::model::Request>> =
+        std::collections::HashMap::new();
+    let mut coll_cache: std::collections::HashMap<
+        String,
+        Option<apiovnia_core::model::Collection>,
+    > = std::collections::HashMap::new();
+    let mut proj_cache: std::collections::HashMap<String, Option<String>> =
+        std::collections::HashMap::new();
+    let mut env_cache: std::collections::HashMap<String, Option<String>> =
+        std::collections::HashMap::new();
+
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let req = if let Some(rid) = &row.request_id {
+            let key = rid.as_str().to_owned();
+            if !req_cache.contains_key(&key) {
+                let v = RequestRepo::get(pool, rid).await.ok();
+                req_cache.insert(key.clone(), v);
+            }
+            req_cache.get(&key).and_then(|o| o.as_ref())
+        } else {
+            None
+        };
+
+        let coll = if let Some(r) = req {
+            let key = r.collection_id.as_str().to_owned();
+            if !coll_cache.contains_key(&key) {
+                let v = apiovnia_storage::CollectionRepo::get(pool, &r.collection_id)
+                    .await
+                    .ok();
+                coll_cache.insert(key.clone(), v);
+            }
+            coll_cache.get(&key).and_then(|o| o.as_ref())
+        } else {
+            None
+        };
+
+        let project_name = if let Some(c) = coll {
+            let key = c.project_id.as_str().to_owned();
+            if !proj_cache.contains_key(&key) {
+                let v = apiovnia_storage::ProjectRepo::get(pool, &c.project_id)
+                    .await
+                    .ok()
+                    .map(|p| p.name);
+                proj_cache.insert(key.clone(), v);
+            }
+            proj_cache.get(&key).cloned().flatten()
+        } else {
+            None
+        };
+
+        let env_name = if let Some(eid) = &row.environment_id {
+            let key = eid.as_str().to_owned();
+            if !env_cache.contains_key(&key) {
+                let v = EnvironmentRepo::get(pool, eid).await.ok().map(|e| e.name);
+                env_cache.insert(key.clone(), v);
+            }
+            env_cache.get(&key).cloned().flatten()
+        } else {
+            None
+        };
+
+        out.push(HistoryRowDto {
+            id: row.id,
+            request_id: row.request_id.map(|i| i.as_str().to_owned()),
+            request_name: req.map(|r| r.name.clone()),
+            project_id: coll.map(|c| c.project_id.as_str().to_owned()),
+            project_name,
+            collection_id: coll.map(|c| c.id.as_str().to_owned()),
+            collection_name: coll.map(|c| c.name.clone()),
+            environment_id: row.environment_id.map(|i| i.as_str().to_owned()),
+            environment_name: env_name,
+            executed_at: row.executed_at,
+            status_code: row.status_code,
+            duration_ms: row.duration_ms,
+            method: req.map(|r| r.method.as_str().to_owned()),
+            url: req.map(|r| r.url.clone()),
+            final_url: row.final_url,
+            content_type: row.content_type,
+            error_message: row.error_message.map(truncate_140),
+        });
+    }
+    Ok(out)
+}
+
+fn truncate_140(mut s: String) -> String {
+    const MAX: usize = 140;
+    if s.chars().count() > MAX {
+        let cut = s.char_indices().nth(MAX).map_or(s.len(), |(i, _)| i);
+        s.truncate(cut);
+        s.push('…');
+    }
+    s
+}
+
+/// Rehydrate a single history row into the full `ExecutionResult` shape
+/// the response viewer already knows how to render. Returns `None` for a
+/// missing id or a row that has no stored body (typical for failures).
+#[tauri::command]
+pub async fn get_history_response(
+    state: State<'_, AppState>,
+    history_id: String,
+) -> Result<Option<ExecutionResult>, ExecuteError> {
+    let Some(row) = HistoryRepo::get(state.db.pool(), &history_id).await? else {
+        return Ok(None);
+    };
+    Ok(Some(rehydrate(row)))
+}
+
+fn rehydrate(row: HistoryEntry) -> ExecutionResult {
     let headers: Vec<HeaderEntry> = row
         .response_headers_json
         .as_deref()
@@ -155,7 +306,7 @@ pub async fn get_last_response(
 
     let status = u16::try_from(row.status_code.unwrap_or(0).max(0)).unwrap_or(0);
 
-    Ok(Some(ExecutionResult {
+    ExecutionResult {
         status,
         status_text: String::new(),
         headers,
@@ -167,7 +318,7 @@ pub async fn get_last_response(
         size_bytes: u64::try_from(row.response_size_bytes.unwrap_or(0).max(0)).unwrap_or(0),
         final_url: row.final_url.unwrap_or_default(),
         sent,
-    }))
+    }
 }
 
 /// Render a paste-ready code snippet for the given request, in the

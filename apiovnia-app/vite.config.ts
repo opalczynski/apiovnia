@@ -2,11 +2,24 @@ import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
+import { readFileSync } from "node:fs";
 
 const host = process.env.TAURI_DEV_HOST;
+const pkg = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL("./package.json", import.meta.url)),
+    "utf8",
+  ),
+) as { version: string };
 
 export default defineConfig({
   plugins: [tailwindcss(), svelte()],
+
+  // Inlined at build time. Frontend reads it as a string literal — the
+  // status footer renders "v{__APP_VERSION__}" in the bottom-right.
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
 
   resolve: {
     alias: {

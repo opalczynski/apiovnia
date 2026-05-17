@@ -92,6 +92,16 @@ impl HistoryRepo {
         Ok(rows.into_iter().map(Row::into_domain).collect())
     }
 
+    /// Fetch one history row by id. Used by the History panel when the user
+    /// clicks a row to rehydrate its full response into the right pane.
+    pub async fn get(pool: &SqlitePool, id: &str) -> Result<Option<HistoryEntry>> {
+        let row = sqlx::query_as::<_, Row>(SELECT_BY_ID)
+            .bind(id)
+            .fetch_optional(pool)
+            .await?;
+        Ok(row.map(Row::into_domain))
+    }
+
     /// Most recent **successful** history entry for a given request — i.e.
     /// `error_message IS NULL`. Used to restore the last response after an
     /// app restart so the right pane isn't empty until the user re-Sends.
@@ -112,6 +122,12 @@ const SELECT_COLUMNS: &str =
             response_size_bytes, response_headers_json, response_body, error_message, \
             sent_json, final_url, content_type, body_kind \
      FROM request_history ORDER BY executed_at DESC LIMIT ?";
+
+const SELECT_BY_ID: &str =
+    "SELECT id, request_id, environment_id, executed_at, status_code, duration_ms, \
+            response_size_bytes, response_headers_json, response_body, error_message, \
+            sent_json, final_url, content_type, body_kind \
+     FROM request_history WHERE id = ? LIMIT 1";
 
 const SELECT_LATEST_SUCCESS: &str =
     "SELECT id, request_id, environment_id, executed_at, status_code, duration_ms, \

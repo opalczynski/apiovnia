@@ -23,7 +23,7 @@
   import { dialogs } from "$lib/stores/dialogs.svelte";
   import type { Request } from "$lib/types/domain";
 
-  type TabId = "params" | "headers" | "body" | "auth" | "env" | "tests";
+  type TabId = "params" | "headers" | "body" | "auth" | "env";
   let activeTab = $state<TabId>("body");
 
   // Mirror panel CTAs — same prompt flows the left/middle panels use, kept
@@ -130,7 +130,6 @@
         label: "Env Overrides",
         count: envCount > 0 ? envCount : null,
       },
-      { id: "tests", label: "Tests", soon: true, disabled: true },
     ];
   });
 
@@ -248,7 +247,7 @@
         </span>
       {/if}
       <span class="grow"></span>
-      <span class="status-cell mono">{r.id.slice(0, 16)}</span>
+      <span class="status-cell mono version" title="Apiovnia version">v{__APP_VERSION__}</span>
     </footer>
   {/if}
 </div>
@@ -395,5 +394,9 @@
   }
   .grow {
     flex: 1;
+  }
+  .version {
+    color: var(--fg-faint);
+    letter-spacing: 0.02em;
   }
 </style>

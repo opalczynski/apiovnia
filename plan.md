@@ -1312,31 +1312,196 @@ co poprawić. Persistent **OpLog panel** z tabelaryczną stats + warnings
 
 ---
 
-## Fazy 9-11 — PENDING
+## Faza 9 — częściowo DONE ✅ (2026-05-17)
 
-### Punch-list co realnie zostało
+**Status:** trzy z pięciu punktów MVP wrap-up zamknięte: History panel UI,
+`⌘1/2/3` focus shortcuts, fresh-DB onboarding overlay. Zostały **app icon**
+i **packaging/signing** — wymagają osobnej decyzji designu / setupu CI.
 
-> Phases 0-8 + 8.5 + 8.6 + 7 wszystkie domknięte. Do MVP zostało już tylko
-> **Phase 9** (app icon, history panel UI, packaging). Phase 10/11 to
-> post-MVP polish.
+### History panel (backend + UI)
 
-**Faza 9 — Polish & release** _(MVP wrap-up, ~2-3 dni)_
-- **App icon** — obecnie systemowy default "cog" w dock/taskbarze.
-  Zaprojektować/zlecić właściwą ikonę Apiovni (amber/dark, prosty kształt,
-  czytelny w 16/32/64/128/256/512). `tauri-icon` CLI generuje wszystkie
-  rozmiary z 1024² PNG. Pliki w `src-tauri/icons/`, zarejestrować w
-  `tauri.conf.json`.
-- **History panel UI** — backend gotowy (`HistoryRepo::list_recent`),
-  dorzucić `HistoryPanel.svelte` w lewy dolny róg (ikona już w designie).
-  Lista ostatnich 200 wykonań, klik → otwiera response viewer z zapisaną
-  odpowiedzią.
-- **`⌘1/2/3` focus panel** (z Phase 8) — wymaga zdefiniowania focus
-  targetów per panel (filter input / first row / URL bar).
-- **Empty states & onboarding** — fresh DB pokazuje full-screen "Welcome
-  to Apiovnia · Create your first project".
+- **Backend (`apiovnia-storage`)**: `HistoryRepo::get(id)` dorzucone (do
+  rehydracji jednego wpisu). `list_recent` było już z Phase 3.
+- **Backend (IPC w `commands/execution.rs`)**:
+  - `list_history(limit = 200) -> Vec<HistoryRowDto>` — DTO z metadanymi
+    (request name, project/collection/env names, status code, duration,
+    method, url, error_message do 140 znaków). Per-call cache (req/coll/
+    proj/env) trzyma lookupy w O(distinct ids) zamiast O(rows).
+  - `get_history_response(history_id) -> Option<ExecutionResult>` — zwraca
+    pełny ExecutionResult zrekonstruowany z zapisanego row'a. Współdzieli
+    funkcję `rehydrate()` z `get_last_response` (refaktor — wcześniej
+    inline ściana w `get_last_response`).
+- **Frontend (`HistoryPanel.svelte`)**: 460 px slide-in overlay od lewej
+  (slide-in animation 180 ms), nad title-barem. Filter input (substring
+  match po name + url + method + project + collection + env), licznik w
+  nagłówku, refresh button, Esc/X/scrim → close.
+  - Per-row: MethodBadge + request name + collection crumb + URL (mono,
+    truncate) + status pill (zielony 2xx / amber 3-4xx / czerwony 5xx lub
+    error) + relative time (HH:MM same-day / "12 May · HH:MM" older) +
+    env name (jeśli był).
+  - Click row → `app.openHistoryEntry(entry)` → navigate top-down do
+    project/collection/request → rehydrate response do prawego pane'a.
+  - Deleted request → row pokazuje `(deleted request)`, klik nadal
+    pokazuje zapisany response (nawigacja non-fatal).
+- **Wiring**: ProjectsPanel footer's history icon (był no-op) → toggle.
+  App.svelte mount conditional na `app.historyPanelOpen`. Store:
+  `historyPanelOpen`, `historyEntries`, `historyLoading`,
+  `openHistoryPanel`/`closeHistoryPanel`/`toggleHistoryPanel`/`refreshHistory`/
+  `openHistoryEntry`.
+
+### `⌘1/2/3` focus shortcuts
+
+- Każdy z trzech inputów dostaje `data-focus-target="left|mid|right"`:
+  - left → ProjectsPanel filter input
+  - mid → RequestsPanel filter input
+  - right → UrlBar's URL input
+- `keymap.ts` rozszerzony: nowy handler na keys `1`/`2`/`3` z mod-key
+  robi `document.querySelector('[data-focus-target="..."]')` → `focus()`
+  + `select()` jeśli to input. Działa również wewnątrz innych inputów —
+  zmiana focusu JEST intencją.
+
+### Fresh-DB onboarding overlay
+
+- `OnboardingOverlay.svelte` — full-shell card (560 px max) wyrenderowany
+  tylko gdy `!app.loading && app.projects.length === 0`. Replaces the
+  three-empty-panels first impression.
+- Sekcje: brand header (logo + name + tagline), big "Welcome." headline +
+  lede, dwa CTA buttony ("Create your first project" primary +
+  "Start from OpenAPI spec…" secondary), 3-step tour panelu (lewy/środek/
+  prawy), footer z keyboard shortcuts cheat-sheet.
+- "Start from OpenAPI" path: prompt na project name → file picker →
+  `createProject` → `importOpenapiForProject`. Po stworzeniu pierwszego
+  projektu overlay znika (cascade auto-pick + DetailPanel's per-state
+  CTAs przejmują dalszy funnel).
+
+### Quality gates
+
+- `pnpm check` ✓ (281 plików, 0/0/0)
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓ (**169/169**: 84 core + 21 crypto + 2 http +
+  56 openapi + 1 petstore integration + 5 storage)
+- `pnpm build` ✓ (699 kB JS / 236 kB gzip)
+
+### Co zostało z Phase 9
+
 - **Packaging** — `tauri.conf.json` ma `bundle.targets: "all"` ale brak
   signing config. Build dla macOS (.dmg + .app), Linux (.deb +
   .AppImage), Windows (.msi) nice-to-have. Auto-update **skip** dla MVP.
+
+---
+
+## Faza 9.5 — UI polish & app icon — DONE ✅ (2026-05-17)
+
+Drobne zmiany z user-testów po Phase 9, plus dodanie ikony aplikacji.
+
+### Keyboard shortcuts swap (⌘K ↔ ⌘P)
+
+- **Było:** ⌘K → palette, ⌘P → focus left filter
+- **Jest:** ⌘P → palette (matches Postman/Insomnia), ⌘K → focus left filter
+  (matches Slack/Linear sidebar search convention)
+- Zmiany: `keymap.ts` (global handler), `ProjectsPanel.svelte` (lokalny
+  filter handler + kbd hint), `OnboardingOverlay.svelte` (cheat-sheet —
+  teraz pokazuje obie pary), komenarze w `CommandPalette.svelte` i
+  `app.svelte.ts` zaktualizowane na ⌘P.
+
+### TitleBar — Search button + Apiovnia logo
+
+- **Search button** w prawej części titlebara: visible alias dla palety —
+  `⌘P` kbd hint po prawej, `onclick={() => app.openPalette()}`. Działa
+  identycznie jak skrót klawiszowy. (Wcześniejsza iteracja "placeholder
+  bez akcji" była błędem — user chciał click→palette + kbd hint na miejscu.)
+- **Logo** w lewym górnym rogu: 18×18 SVG honeycomb (mid variant z designu
+  — outline hex + filled center dot, amber `#F59E0B`) + bold "Apiovnia"
+  napis obok. Pierwszy element titlebara, na tym samym pasku co breadcrumbs.
+
+### ProjectsPanel footer — honeycomb avatar
+
+- **Było:** orange-square `<div>A</div>` (temporary placeholder z startera).
+- **Jest:** ten sam 20×20 SVG honeycomb co w TitleBar. Spójność wizualna —
+  jedna marka, dwa miejsca.
+
+### App icon (honeycomb)
+
+- **Master source**: `design_artifacts/icons/master/apiovnia-1024.png`
+  (z towarzyszącym `apiovnia.svg`) — przygotowany ręcznie wg designu z
+  `App Icon - Honeycomb Set.html`. Wcześniej próbowaliśmy renderować
+  z SVG przez ImageMagick + Inkscape — wyglądało źle (pomarańczowa
+  kropka w czarnym kwadracie zamiast hex'a), bo Inkscape w snapie ma
+  problemy z dostępem do plików. Użycie przygotowanego masteru z
+  designu jest jedyną wiarygodną ścieżką.
+- Cała generacja: `pnpm tauri icon design_artifacts/icons/master/apiovnia-1024.png`.
+  Tauri pluje ios/ + android/ + MSIX Square*Logo.png + StoreLogo.png — nie
+  używamy ich (MVP target = macOS + Linux + Windows .ico bez Microsoft
+  Store), więc kasujemy. Zostaje **minimalny zestaw**:
+  - `apiovnia.svg` (kopia z designu, vector reference)
+  - `32x32.png`, `64x64.png`, `128x128.png`, `128x128@2x.png`
+  - `icon.png` (512²), `icon.icns` (macOS), `icon.ico` (Windows)
+- `tauri.conf.json` był już prawidłowy, plain regen.
+- **Logo TitleBar + ProjectsPanel footer**: oba mountują inline SVG
+  honeycomb (mid variant — amber outline hex + filled center dot)
+  zamiast image-tag z plikiem. Lekkie (~200 B markup), nie potrzebują
+  dodatkowego fetch'a, idealnie się skalują.
+
+### Footer (DetailPanel)
+
+- **Było:** `req_5a1c…` (16-znaków hash request id) w prawym dolnym rogu.
+  Debug-grade artifact, nikomu niepotrzebny w prod.
+- **Jest:** `v0.1.0` (app version) — czytane z `package.json` przez
+  Vite `define: { __APP_VERSION__: JSON.stringify(pkg.version) }`.
+  Globalna deklaracja w `src/vite-env.d.ts`. Zero runtime cost — string
+  literal podstawiany przy buildzie. Klasy `.version` (dim color +
+  letter-spacing) żeby nie odciągał uwagi.
+
+### Body editor — Beautify removed
+
+- Usunięty button "Beautify" z `BodyTab.svelte` (był visible tylko dla
+  JSON body type). Pure UI cleanup — funkcja `beautify()` też usunięta
+  (faktycznie działała: `JSON.stringify(JSON.parse(content), null, 2)`,
+  ale w praktyce CodeMirror + JSON syntax highlight + parse-lint banner
+  pokazują od razu czy JSON jest prawidłowy, a 99% wartości w API klientcie
+  to już pretty JSON. Re-format on-demand nie wnosił wartości).
+- Orphan `.grow` style usunięty.
+
+### Tests tab removed
+
+- Tab "Tests" w `DetailPanel.svelte` (był `soon: true, disabled: true`
+  placeholder) usunięty z `TabId` union + spec. Out-of-scope dla MVP
+  (i nadal — pre-request scripts / test assertions to różne narzędzia,
+  nie API client).
+
+### Tab spacing — Params / Headers
+
+- `ParamsTab` + `HeadersTab` dostały `padding-top: 8px` na `.wrap`.
+  Wcześniej `KeyValueTable` zaczynała się 1px od dolnej krawędzi taba —
+  wyglądało jakby skleiło się do `Tabs` headera. Z 8px breath room
+  czytelne że "tu zaczyna się treść".
+
+### Theme set documentation (Phase 11 spec lock-in)
+
+- Phase 11 sekcja w plan.md zaktualizowana: **5 themes** zamiast "3-4
+  motywy + opcjonalnie":
+  1. `apiovnia` (default) — current amber/dark
+  2. `atomic-dark` — minimalistyczny czarny, zero color noise
+  3. `tokyo-night` — granatowo-fioletowy (Zed/Neovim port)
+  4. `monokai` — klasyczny Sublime look, różowe akcenty
+  5. `light` — biała baza, wymaga audytu wszystkich rgba/opacity overlayów
+- Inspiracja: Zed editor's palette.
+- Light theme caveat: audyt `rgba(0,0,0,…)` shadows, `color-mix` overlay
+  na erroach/ok states, scrim alpha — w dark wszystko ginie w tle, w light
+  wybielają się.
+
+### Quality gates
+
+- `pnpm check` ✓ (284 plików, 0/0/0)
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓ (**169/169** — bez zmian, frontend-only polish)
+- `pnpm build` ✓ (699 kB JS / 236 kB gzip)
+
+---
+
+## Fazy 9 (reszta) + 10-11 — PENDING
+
+### Punch-list co realnie zostało
 
 **Faza 10 — Security & UX hardening** _(post-MVP, opcjonalne — patrz niżej)_
 - Configurable auto-lock timeout, UI countdown, lock-on-blur/system-lock,
@@ -1350,12 +1515,30 @@ Settings ikonka w lewym dolnym rogu już jest w designie ale nic nie robi.
 Domknąć: otwiera modal/panel z konfiguracją per-user.
 
 - `SettingsModal.svelte` (lub side-panel sliding from right) z sekcjami:
-  - **Appearance** — theme picker (3-4 motywy):
-    - `apiovnia-default` (current amber/dark)
-    - `monokai` — klasyczny czarno-zielony z różowymi akcentami
-    - `tokyo-night` — granatowo-fioletowy
-    - `light` — biała baza, ciemne akcenty (no nareszcie)
-    - (opcjonalnie: `solarized-dark`, `gruvbox`)
+  - **Appearance** — theme picker (**5 motywów**, locked-in w Phase 9.5):
+    1. `apiovnia` (default) — current amber/dark, source of truth dla tokens
+    2. `atomic-dark` — minimalistyczny czarny z subtelnymi neutralnymi
+       akcentami; przeciwwaga dla amber, dla osób które chcą "zero color
+       noise"
+    3. `tokyo-night` — granatowo-fioletowy, popularny Zed/Neovim port,
+       blue/cyan akcenty zamiast amber
+    4. `monokai` — klasyczny czarno-zielony Sublime/TextMate look, różowe
+       akcenty
+    5. `light` — biała baza, ciemne akcenty (no nareszcie); jedyny non-dark
+       motyw, wymaga oddzielnego review wszystkich `color-mix(...)` i opacity
+       overlayów żeby nie wybielały się do invisible
+  - Inspiracja zestawem: Zed editor's theme palette. Wszystkie 5 podzielają
+    ten sam layout, tylko CSS variables się zmieniają.
+  - Theme = zestaw CSS variables w `app.css`; przełącznik nadpisuje
+    `:root` w klasie body. Tokeny już są wycentralizowane, więc dodanie
+    motywu = nowa CSS var bundle (~30 zmiennych). Persisted w localStorage.
+  - Per-theme CodeMirror palette: każdy motyw potrzebuje swojego mapowania
+    `--j-key/-string/-number/-bool/-null/-punct` (JSON viewer +
+    CodeMirror highlight). Patrz `app.css` jak `apiovnia` to definiuje.
+  - **Light theme caveat** — wymaga audytu wszystkich miejsc gdzie zakładamy
+    dark: rgba overlays (np. `rgba(0,0,0,0.45)` shadows), color-mix
+    z `var(--err)`/`var(--ok)`, scrim opacity. Lista wystąpień do zebrania
+    przed implementacją.
   - Theme = zestaw CSS variables w `app.css`; przełącznik nadpisuje
     `:root` w klasie body. Tokeny już są wycentralizowane, więc dodanie
     motywu = nowa CSS var bundle (~30 zmiennych). Persisted w localStorage.
@@ -1395,13 +1578,17 @@ listę hardcoded'ów które mają sens jako settings:
 
 | Co | Status | Phase |
 |---|---|---|
-| **App icon** | systemowy default | **9 (next)** |
-| History panel UI | backend done, UI brak | 9 |
-| `⌘1/2/3` focus panel | brak | 9 |
-| Onboarding empty state | brak | 9 |
-| Packaging (signing, bundle targets) | placeholdery | 9 |
+| History panel UI | ✅ done | 9 |
+| `⌘1/2/3` focus panel | ✅ done | 9 |
+| Onboarding empty state | ✅ done | 9 |
+| App icon (honeycomb) | ✅ done | 9.5 |
+| TitleBar logo | ✅ done | 9.5 |
+| ⌘P palette / ⌘K filter swap | ✅ done | 9.5 |
+| Footer shows version | ✅ done | 9.5 |
+| Beautify / Tests / search btn cleanup | ✅ done | 9.5 |
+| **Packaging (signing, bundle targets)** | placeholdery | **9 (next)** |
 | Hardening features | brak | 10 |
-| Settings modal + themes | brak (ikona już jest, no-op) | 11 |
+| Settings modal + themes (5 themes spec'd) | brak (ikona już jest, no-op) | 11 |
 
 ### Faza 10 — pomysły / dług bezpieczeństwa
 
@@ -1479,16 +1666,35 @@ Zebrane po Phase 6, do rozważenia gdy MVP wyląduje:
 - Global toast host (transient bottom-right feedback)
 - Filtry (text + method), cascade auto-pick, smart empty states z CTA
 
-**Backend gotowy, brak UI:**
-- History panel: `HistoryRepo::list_recent()` istnieje, każdy execute zapisuje
-  pełny snapshot ExecutionResult, ale w UI nie ma jeszcze panelu — Phase 9.
+**Działa od Phase 9 (2026-05-17):**
+- **History panel** — slide-in od lewej (toggle: ikona w left footer),
+  lista 200 ostatnich wykonań z filterem, status pill, time, env badge.
+  Klik → navigate do origin request + rehydrate stored response.
+- **`⌘1/2/3`** — focus left filter / mid filter / URL bar via
+  `data-focus-target` selectors.
+- **Onboarding overlay** — fresh-DB full-shell welcome z primary CTA
+  ("Create your first project") + secondary ("Start from OpenAPI spec…")
+  + 3-step tour + keyboard shortcuts cheat-sheet.
+
+**Działa od Phase 9.5 (2026-05-17):**
+- **App icon (honeycomb)** — pełny set: 32/64/128/128@2x PNG +
+  icon.icns/icon.ico + MSIX tiles. Master SVG + rendered PNG w
+  `src-tauri/icons/`.
+- **TitleBar logo** — 18px honeycomb mark + bold "Apiovnia" napis lewy
+  górny róg, na tym samym pasku co breadcrumbs.
+- **Shortcut swap**: ⌘P → palette, ⌘K → focus left filter (Postman/Slack
+  conventions).
+- **Footer version**: `v0.1.0` zamiast `req_xxx` hash.
+- **UI cleanup**: Beautify button (BodyTab) + Tests tab (DetailPanel) +
+  Search button kbd hint usunięte; TitleBar Search teraz placeholder bez
+  onclick. Params/Headers tabs dostały 8px top padding (no longer touch
+  border).
 
 **Brak feature'u w ogóle:**
-- App icon — systemowy default cog w dock/taskbarze (Phase 9)
-- `⌘1/2/3` focus panel — z Phase 8 odłożone do Phase 9 (Phase 9)
 - Packaging dla release — `tauri.conf.json` ma `bundle.targets: "all"` ale
   bez signing config (Phase 9)
-- Settings panel + themes — ikona jest, no-op (Phase 11)
+- Settings panel + themes — ikona jest, no-op; **5 themes spec'd**
+  w Phase 11 (apiovnia / atomic-dark / tokyo-night / monokai / light)
 - Phase 10 hardening — patrz lista pomysłów wyżej
 
 ### Otwarte tematy / dług techniczny

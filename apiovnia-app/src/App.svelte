@@ -13,6 +13,8 @@
   import SetEnvPasswordModal from "$lib/components/modals/SetEnvPasswordModal.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import OpLogHost from "$lib/components/OpLogHost.svelte";
+  import HistoryPanel from "$lib/components/panels/HistoryPanel.svelte";
+  import OnboardingOverlay from "$lib/components/OnboardingOverlay.svelte";
   import { app } from "$lib/stores/app.svelte";
   import { installKeymap } from "$lib/keymap";
 
@@ -69,6 +71,14 @@
   {#if app.envPasswordSetupId}
     {@const id = app.envPasswordSetupId}
     <SetEnvPasswordModal envId={id} onClose={() => app.closeEnvPasswordSetup()} />
+  {/if}
+
+  {#if app.historyPanelOpen}
+    <HistoryPanel onClose={() => app.closeHistoryPanel()} />
+  {/if}
+
+  {#if !app.loading && app.projects.length === 0}
+    <OnboardingOverlay />
   {/if}
 
   <ToastHost />

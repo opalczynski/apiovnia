@@ -96,8 +96,12 @@
   .dim {
     color: var(--fg-dim);
   }
+  /* Local "faint" tier — labels (`time`, `size`) and the content-type
+     string sit on --surface in mono at 11 px. Even fg-muted reads a bit
+     thin there, so we pin them to fg-muted explicitly (not fg-faint —
+     these are scanning targets, not decorations). */
   .faint {
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
   .warn {
     color: var(--warn);

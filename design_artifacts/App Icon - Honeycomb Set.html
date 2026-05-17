@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Apiovnia · App icon · Full OS export set</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0B0B0D;
+    --surface: #111114;
+    --surface-2: #16161A;
+    --surface-3: #1B1B20;
+    --border: #1F1F22;
+    --border-strong: #2A2A2F;
+    --fg: #ECECEC;
+    --fg-dim: #B5B5BC;
+    --fg-muted: #7C7C84;
+    --fg-faint: #54545B;
+    --accent: #F59E0B;
+    --accent-hi: #FBBF24;
+    --accent-bg: rgba(245,158,11,0.10);
+    --accent-bd: rgba(245,158,11,0.30);
+    --ok: #4ADE80;
+    --info: #60A5FA;
+    --warn: #FBBF24;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: var(--ui); -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  body { padding: 56px 48px 96px; }
+
+  /* ---------- Header ---------- */
+  header.page {
+    max-width: 1280px; margin: 0 auto 56px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 40px;
+  }
+  header.page h1 { margin: 0 0 6px; font-size: 30px; font-weight: 600; letter-spacing: -0.025em; }
+  header.page .sub { font-family: var(--mono); font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+  header.page p { margin: 0; font-size: 13.5px; color: var(--fg-muted); line-height: 1.55; max-width: 520px; }
+  header.page .meta { text-align: right; font-family: var(--mono); font-size: 11px; color: var(--fg-faint); line-height: 1.7; letter-spacing: 0.04em; }
+  header.page .meta b { color: var(--fg-dim); font-weight: 500; }
+
+  /* ---------- Section ---------- */
+  section.osblock {
+    max-width: 1280px; margin: 0 auto 48px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  section.osblock > header {
+    padding: 22px 28px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  }
+  .os-badge {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--surface-3);
+    border: 1px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent);
+  }
+  .os-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .os-sub { font-family: var(--mono); font-size: 11px; color: var(--fg-faint); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .os-tags { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .os-tag {
+    font-family: var(--mono); font-size: 10.5px; color: var(--fg-dim);
+    background: var(--surface-3); border: 1px solid var(--border-strong);
+    padding: 4px 8px; border-radius: 5px; letter-spacing: 0.04em;
+  }
+  .os-tag.amber { color: var(--accent); border-color: var(--accent-bd); background: var(--accent-bg); }
+
+  section.osblock .body { padding: 28px; }
+
+  /* ---------- Size grid ---------- */
+  .grid {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 28px 36px;
+  }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .slot .iconwrap {
+    display: flex; align-items: flex-end; justify-content: center;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 8px, transparent 8px 16px);
+    border-radius: 8px;
+    padding: 6px;
+  }
+  .slot .label {
+    font-family: var(--mono); font-size: 10.5px; color: var(--fg-dim);
+    text-align: center; line-height: 1.4;
+  }
+  .slot .label .pixels {
+    color: var(--fg-faint); font-size: 9.5px; display: block; margin-top: 2px;
+  }
+  .slot .label.scaled {
+    color: var(--accent);
+  }
+
+  /* The icon container (squircle + gradient bg) */
+  .icon {
+    background: linear-gradient(180deg, #1F1714 0%, #0B0908 100%);
+    border-radius: 22.5%;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 0.5px rgba(255,255,255,0.06) inset,
+      0 1px 2px rgba(0,0,0,0.4);
+  }
+  .icon.big {
+    box-shadow:
+      0 0 0 0.5px rgba(255,255,255,0.06) inset,
+      0 1px 2px rgba(0,0,0,0.4),
+      0 18px 40px rgba(0,0,0,0.45);
+  }
+  .icon::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 30%);
+    pointer-events: none;
+  }
+  .icon svg { display: block; width: 72%; height: 72%; position: absolute; top: 14%; left: 14%; }
+
+  /* Master section */
+  .master-row {
+    display: grid; grid-template-columns: 320px 1fr; gap: 40px; align-items: center;
+  }
+  .master-info h3 { margin: 0 0 10px; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .master-info p { margin: 0 0 14px; font-size: 13px; color: var(--fg-muted); line-height: 1.55; }
+  .spec-list {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;
+    font-family: var(--mono); font-size: 11.5px;
+  }
+  .spec-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border-strong); }
+  .spec-list li span:first-child { color: var(--fg-faint); }
+  .spec-list li span:last-child { color: var(--fg-dim); text-align: right; }
+
+  /* ---------- File table ---------- */
+  .files {
+    margin-top: 24px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .files-row {
+    display: grid;
+    grid-template-columns: 40px 1.5fr 1fr 1fr 2fr;
+    gap: 16px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    align-items: center;
+  }
+  .files-row:last-child { border-bottom: 0; }
+  .files-row.head {
+    background: var(--surface-2);
+    color: var(--fg-faint);
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .files-row .mini { display: flex; align-items: center; justify-content: center; }
+  .files-row .fname { font-family: var(--mono); color: var(--fg); font-size: 11.5px; }
+  .files-row .size { font-family: var(--mono); color: var(--fg-dim); font-size: 11.5px; }
+  .files-row .scale { font-family: var(--mono); color: var(--accent); font-size: 11px; }
+  .files-row .scale.x1 { color: var(--fg-faint); }
+  .files-row .ctx { color: var(--fg-muted); font-size: 11.5px; line-height: 1.4; }
+
+  /* ---------- Tauri config block ---------- */
+  .conf {
+    margin-top: 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--fg-dim);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .conf .k { color: var(--accent); }
+  .conf .s { color: #A7E2B5; }
+  .conf .c { color: var(--fg-faint); font-style: italic; }
+  .conf .p { color: var(--fg-faint); }
+
+  /* ---------- Notes ---------- */
+  .notes {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    margin-top: 20px;
+  }
+  .note {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: var(--fg-dim);
+    line-height: 1.55;
+  }
+  .note b { color: var(--fg); font-weight: 600; }
+  .note .lbl {
+    display: inline-block;
+    font-family: var(--mono); font-size: 10px; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  /* ---------- Contexts row ---------- */
+  .contexts {
+    max-width: 1280px; margin: 56px auto 0;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  }
+  .ctx-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .ctx-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12.5px; font-weight: 500;
+  }
+  .ctx-head .tag { font-family: var(--mono); font-size: 10px; color: var(--fg-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .ctx-body { padding: 24px 20px; min-height: 160px; display: flex; align-items: center; justify-content: center; }
+
+  /* macOS dock */
+  .mock-dock {
+    background:
+      radial-gradient(circle at 20% 30%, rgba(245,158,11,0.10), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(96,165,250,0.08), transparent 45%),
+      linear-gradient(135deg, #1a1612, #0d0b0a);
+    padding: 24px; width: 100%; border-radius: 0;
+  }
+  .dock-bar {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 8px 14px;
+    display: flex; gap: 8px; justify-content: center;
+    backdrop-filter: blur(20px);
+  }
+  .dock-bar .ph {
+    width: 44px; height: 44px; border-radius: 22.5%;
+    background: linear-gradient(180deg, #2A2A30, #1A1A1F);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 14px; color: var(--fg-faint);
+  }
+
+  /* Windows taskbar */
+  .mock-taskbar {
+    background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.7));
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 6px 0;
+    width: 100%;
+    display: flex; align-items: center; gap: 4px; justify-content: center;
+  }
+  .mock-taskbar .tb {
+    width: 36px; height: 36px; border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px; color: var(--fg-faint); font-family: var(--mono);
+  }
+  .mock-taskbar .tb.live { background: rgba(245,158,11,0.10); position: relative; }
+  .mock-taskbar .tb.live::after {
+    content: ""; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+    width: 14px; height: 2px; background: var(--accent); border-radius: 1px;
+  }
+
+  /* Linux GNOME activities */
+  .mock-gnome {
+    background: linear-gradient(135deg, #241a18, #0d0b0a);
+    padding: 24px; width: 100%; border-radius: 0;
+  }
+  .gnome-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px;
+    max-width: 360px; margin: 0 auto;
+  }
+  .gnome-grid .g {
+    aspect-ratio: 1;
+    border-radius: 18%;
+    background: linear-gradient(180deg, #2A2A30, #1A1A1F);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 10px; color: var(--fg-faint);
+  }
+
+  /* Footer */
+  footer {
+    max-width: 1280px; margin: 56px auto 0;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 11px; color: var(--fg-faint); letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<header class="page">
+  <div>
+    <div class="sub">03 · apis · honeycomb · production set</div>
+    <h1>Honeycomb · OS export set</h1>
+    <p>Komplet rozmiarów dla macOS (.icns), Windows (.ico), Linux (hicolor) + Tauri build manifest. Ikona ma trzy warianty rysunku zależnie od rozmiaru — outline znika gdy 1px nie ma już sensu.</p>
+  </div>
+  <div class="meta">
+    <b>master</b> · 1024×1024 png<br/>
+    <b>color</b> · #F59E0B amber<br/>
+    <b>bg</b> · #1F1714 → #0B0908<br/>
+    <b>radius</b> · 22.5% squircle<br/>
+    17 may 2026 · v1.0
+  </div>
+</header>
+
+<!-- ============================================================
+     MASTER FILE
+============================================================ -->
+<section class="osblock">
+  <header>
+    <div class="os-badge">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12,2 22,7 22,17 12,22 2,17 2,7"></polygon>
+        <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+      </svg>
+    </div>
+    <div>
+      <div class="os-title">Master file</div>
+      <div class="os-sub">source of truth · 1024×1024</div>
+    </div>
+    <div class="os-tags">
+      <span class="os-tag amber">apiovnia.png</span>
+      <span class="os-tag">vector source</span>
+    </div>
+  </header>
+  <div class="body">
+    <div class="master-row">
+      <div>
+        <div class="icon big" style="width: 280px; height: 280px;">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;position:absolute;top:0;left:0;padding:14%">
+            <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+            <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+            <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+          </svg>
+        </div>
+      </div>
+      <div class="master-info">
+        <h3>Trzy warianty rysunku, wybór wg rozmiaru</h3>
+        <p>Aby ikona była ostra na każdym rozmiarze, nie skaluję jednego SVG do wszystkiego — używam trzech wariantów. Outline-y poniżej 1px znikają lub się sklejają w plamę, dlatego &lt;=24px to wypełniony hex.</p>
+        <ul class="spec-list">
+          <li><span>full</span><span>≥ 64 px</span></li>
+          <li><span>+ outer ring</span><span>≥ 128 px</span></li>
+          <li><span>+ drop glint</span><span>≥ 256 px</span></li>
+          <li><span>mid</span><span>32 – 48 px</span></li>
+          <li><span>small (filled)</span><span>≤ 24 px</span></li>
+          <li><span>bg gradient</span><span>≥ 128 px</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     macOS
+============================================================ -->
+<section class="osblock">
+  <header>
+    <div class="os-badge">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 1.5c.05 1.1-.4 2.2-1.1 3-.7.85-1.85 1.5-3 1.4-.07-1.1.45-2.2 1.15-3 .75-.85 1.95-1.4 2.95-1.4Zm3.4 17.6c-.6 1.4-1.35 2.7-2.45 3.2-1 .45-1.6.45-2.6 0-1-.45-1.55-.45-2.6 0-1.05.5-1.65.5-2.65 0-1.1-.55-1.85-1.85-2.45-3.25-1.2-2.8-1.4-7.3.95-9.85.85-.95 2.3-1.5 3.6-1.5 1.1 0 1.85.45 2.6.45.75 0 1.45-.45 2.7-.45 1.3 0 2.85.55 3.7 1.6-3.25 1.8-2.75 6.4-.8 8.05.9.75 1.6 1.05 2.05 1.75Z"/></svg>
+    </div>
+    <div>
+      <div class="os-title">macOS · <span style="font-family:var(--mono); color:var(--fg-dim); font-size:14px; font-weight:500">apiovnia.icns</span></div>
+      <div class="os-sub">retina + non-retina · 10 entries · 22.5% squircle padding</div>
+    </div>
+    <div class="os-tags">
+      <span class="os-tag amber">10 png → .icns</span>
+      <span class="os-tag">iconutil</span>
+    </div>
+  </header>
+  <div class="body">
+    <div class="grid">
+      <!-- 16 -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 16px; height: 16px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">16<span class="pixels">small @1x</span></div>
+      </div>
+      <!-- 32 (16@2x) -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 32px; height: 32px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="6"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label scaled">32<span class="pixels">16@2x</span></div>
+      </div>
+      <!-- 32 -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 32px; height: 32px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="6"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">32<span class="pixels">small @1x</span></div>
+      </div>
+      <!-- 64 (32@2x) -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 64px; height: 64px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label scaled">64<span class="pixels">32@2x</span></div>
+      </div>
+      <!-- 128 -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 128px; height: 128px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">128<span class="pixels">medium @1x</span></div>
+      </div>
+      <!-- 256 (128@2x) -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 192px; height: 192px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label scaled">256<span class="pixels">128@2x</span></div>
+      </div>
+      <!-- 256 -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 96px; height: 96px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">256<span class="pixels">large @1x</span></div>
+      </div>
+      <!-- 512 (256@2x) -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 112px; height: 112px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label scaled">512<span class="pixels">256@2x</span></div>
+      </div>
+      <!-- 512 -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 112px; height: 112px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">512<span class="pixels">xlarge @1x</span></div>
+      </div>
+      <!-- 1024 (512@2x) -->
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 128px; height: 128px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label scaled">1024<span class="pixels">512@2x · retina</span></div>
+      </div>
+    </div>
+
+    <div class="files">
+      <div class="files-row head">
+        <span></span><span>filename</span><span>size</span><span>scale</span><span>context</span>
+      </div>
+      <div class="files-row"><span></span><span class="fname">icon_16x16.png</span><span class="size">16 × 16</span><span class="scale x1">@1x</span><span class="ctx">menubar, Finder tiny</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_16x16@2x.png</span><span class="size">32 × 32</span><span class="scale">@2x</span><span class="ctx">menubar on retina</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_32x32.png</span><span class="size">32 × 32</span><span class="scale x1">@1x</span><span class="ctx">spotlight</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_32x32@2x.png</span><span class="size">64 × 64</span><span class="scale">@2x</span><span class="ctx">spotlight retina, sidebar</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_128x128.png</span><span class="size">128 × 128</span><span class="scale x1">@1x</span><span class="ctx">Finder list view</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_128x128@2x.png</span><span class="size">256 × 256</span><span class="scale">@2x</span><span class="ctx">Finder retina</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_256x256.png</span><span class="size">256 × 256</span><span class="scale x1">@1x</span><span class="ctx">Finder Get Info</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_256x256@2x.png</span><span class="size">512 × 512</span><span class="scale">@2x</span><span class="ctx">Get Info retina</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_512x512.png</span><span class="size">512 × 512</span><span class="scale x1">@1x</span><span class="ctx">App Store, Launchpad</span></div>
+      <div class="files-row"><span></span><span class="fname">icon_512x512@2x.png</span><span class="size">1024 × 1024</span><span class="scale">@2x</span><span class="ctx">Launchpad retina, Dock max</span></div>
+    </div>
+
+    <div class="notes">
+      <div class="note">
+        <span class="lbl">Build command</span>
+        Spakuj 10 plików do <span class="fname" style="font-family:var(--mono);color:var(--fg);">apiovnia.iconset/</span>, potem:<br/>
+        <span class="fname" style="font-family:var(--mono);color:var(--accent);">iconutil -c icns apiovnia.iconset</span>
+      </div>
+      <div class="note">
+        <span class="lbl">macOS już nakłada squircle</span>
+        Od Big Sur system <b>automatycznie maskuje</b> ikony do squircle'a 22.5%. Jeśli ekspoertujesz z gradientem tła już w squircle, system nie domaskuje drugi raz — tło zostaje pełne. Trzymaj się squircle'a w pliku.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     WINDOWS
+============================================================ -->
+<section class="osblock">
+  <header>
+    <div class="os-badge">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M2 4.5 11 3.2v8.3H2V4.5Zm0 8.7h9V21l-9-1.3v-6.5Zm10-10.2L22 1.5v10H12V3Zm0 10.2h10v10L12 21V13.2Z"/></svg>
+    </div>
+    <div>
+      <div class="os-title">Windows · <span style="font-family:var(--mono); color:var(--fg-dim); font-size:14px; font-weight:500">apiovnia.ico</span></div>
+      <div class="os-sub">multi-resolution ico · 7 entries · square (system clip if needed)</div>
+    </div>
+    <div class="os-tags">
+      <span class="os-tag amber">7 png → .ico</span>
+      <span class="os-tag">+ MSIX tiles</span>
+    </div>
+  </header>
+  <div class="body">
+    <div class="grid">
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 16px; height: 16px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">16<span class="pixels">titlebar, alt-tab</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 24px; height: 24px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="7"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">24<span class="pixels">classic apps</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 32px; height: 32px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="6"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">32<span class="pixels">desktop shortcut</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 48px; height: 48px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="3"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="4"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">48<span class="pixels">Win 7+ default</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 64px; height: 64px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">64<span class="pixels">large icons view</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 128px; height: 128px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">128<span class="pixels">extra-large</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 192px; height: 192px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">256<span class="pixels">jumbo, dpi-scaled</span></div>
+      </div>
+    </div>
+
+    <div class="files">
+      <div class="files-row head"><span></span><span>filename</span><span>size</span><span>format</span><span>context</span></div>
+      <div class="files-row"><span></span><span class="fname">apiovnia.ico</span><span class="size">16,24,32,48,64,128,256</span><span class="scale">.ico multi</span><span class="ctx">main embedded resource, .exe icon</span></div>
+      <div class="files-row"><span></span><span class="fname">Square150x150Logo.png</span><span class="size">150 × 150</span><span class="scale">.png</span><span class="ctx">MSIX Start menu tile (medium)</span></div>
+      <div class="files-row"><span></span><span class="fname">Square44x44Logo.png</span><span class="size">44 × 44</span><span class="scale">.png</span><span class="ctx">MSIX taskbar / app list</span></div>
+      <div class="files-row"><span></span><span class="fname">StoreLogo.png</span><span class="size">50 × 50</span><span class="scale">.png</span><span class="ctx">Microsoft Store listing</span></div>
+      <div class="files-row"><span></span><span class="fname">Wide310x150Logo.png</span><span class="size">310 × 150</span><span class="scale">.png</span><span class="ctx">MSIX wide tile (optional)</span></div>
+    </div>
+
+    <div class="notes">
+      <div class="note">
+        <span class="lbl">Build command</span>
+        Tauri zrobi .ico automatycznie z PNG. Ręcznie:<br/>
+        <span class="fname" style="font-family:var(--mono);color:var(--accent);">magick convert 16.png 24.png 32.png 48.png 64.png 128.png 256.png apiovnia.ico</span>
+      </div>
+      <div class="note">
+        <span class="lbl">Squircle vs. square</span>
+        Windows 11 taskbar <b>nie maskuje</b> — ikony zostają takie jakie są w pliku. Squircle wygląda spójnie z macOS, ale system Win-natywnie używa kwadratu. Squircle z gradientem działa OK, tylko Start menu doda do niego cień.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     LINUX
+============================================================ -->
+<section class="osblock">
+  <header>
+    <div class="os-badge">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9 2 8 5 8 7.5c0 1.4-.6 2.2-1.3 3-.8.9-1.7 1.8-1.7 3.4 0 .9.3 1.6.7 2.1-1.2.7-2.2 1.8-2.7 3-.2.6-.1 1.2.4 1.6.6.4 1.5.4 2.2.1.7-.3 1.3-.8 1.8-1.3.8.7 1.9 1.2 3.1 1.4-.2.5-.4 1 0 1.5.4.5 1.2.5 1.7.3.6-.2 1-.6 1.2-1.1 1-.2 1.9-.6 2.7-1.1.3.4 1 1 1.7 1.3.7.3 1.6.3 2.2-.1.5-.4.6-1 .4-1.6-.5-1.2-1.5-2.3-2.7-3 .4-.5.7-1.2.7-2.1 0-1.6-.9-2.5-1.7-3.4-.7-.8-1.3-1.6-1.3-3C16 5 15 2 12 2Z"/></svg>
+    </div>
+    <div>
+      <div class="os-title">Linux · <span style="font-family:var(--mono); color:var(--fg-dim); font-size:14px; font-weight:500">hicolor theme</span></div>
+      <div class="os-sub">freedesktop.org spec · multiple PNGs + SVG · per-resolution directory</div>
+    </div>
+    <div class="os-tags">
+      <span class="os-tag amber">9 png + svg</span>
+      <span class="os-tag">.desktop entry</span>
+    </div>
+  </header>
+  <div class="body">
+    <div class="grid">
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 16px; height: 16px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">16<span class="pixels">panel small</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 22px; height: 22px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="8"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">22<span class="pixels">GNOME panel</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 24px; height: 24px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="7"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">24<span class="pixels">KDE small</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 32px; height: 32px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="6"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">32<span class="pixels">file manager</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 48px; height: 48px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="3"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="4"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">48<span class="pixels">XDG default</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 64px; height: 64px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">64<span class="pixels">activities</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 96px; height: 96px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">96<span class="pixels">app grid</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 128px; height: 128px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label">128<span class="pixels">overview hi-dpi</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap">
+          <div class="icon" style="width: 192px; height: 192px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label scaled">256<span class="pixels">flatpak, snap</span></div>
+      </div>
+      <div class="slot">
+        <div class="iconwrap" style="background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02)); border: 1px dashed var(--accent-bd); padding: 14px;">
+          <div class="icon" style="width: 96px; height: 96px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="label scaled">SVG<span class="pixels">scalable · vector</span></div>
+      </div>
+    </div>
+
+    <div class="files">
+      <div class="files-row head"><span></span><span>destination path</span><span>size</span><span>format</span><span>context</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/16x16/apps/apiovnia.png</span><span class="size">16</span><span class="scale x1">png</span><span class="ctx">notification area, system tray</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/22x22/apps/apiovnia.png</span><span class="size">22</span><span class="scale x1">png</span><span class="ctx">GNOME top panel</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/24x24/apps/apiovnia.png</span><span class="size">24</span><span class="scale x1">png</span><span class="ctx">KDE/XFCE small toolbar</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/32x32/apps/apiovnia.png</span><span class="size">32</span><span class="scale x1">png</span><span class="ctx">Nautilus list view</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/48x48/apps/apiovnia.png</span><span class="size">48</span><span class="scale x1">png</span><span class="ctx">XDG default · required</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/64x64/apps/apiovnia.png</span><span class="size">64</span><span class="scale x1">png</span><span class="ctx">GNOME activities</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/96x96/apps/apiovnia.png</span><span class="size">96</span><span class="scale x1">png</span><span class="ctx">app grid hi-dpi</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/128x128/apps/apiovnia.png</span><span class="size">128</span><span class="scale x1">png</span><span class="ctx">app drawer fullsize</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/256x256/apps/apiovnia.png</span><span class="size">256</span><span class="scale">png</span><span class="ctx">flatpak / snap manifests</span></div>
+      <div class="files-row"><span></span><span class="fname">/hicolor/scalable/apps/apiovnia.svg</span><span class="size">∞</span><span class="scale">svg</span><span class="ctx">vector fallback, hi-dpi</span></div>
+    </div>
+
+    <div class="notes">
+      <div class="note">
+        <span class="lbl">Install path</span>
+        Wszystko ląduje w <span class="fname" style="font-family:var(--mono);color:var(--fg);">/usr/share/icons/hicolor/&lt;size&gt;/apps/</span>. Po instalacji odpal <span class="fname" style="font-family:var(--mono);color:var(--accent);">gtk-update-icon-cache</span>.
+      </div>
+      <div class="note">
+        <span class="lbl">.desktop entry</span>
+        W <span class="fname" style="font-family:var(--mono);color:var(--fg);">/usr/share/applications/apiovnia.desktop</span> wpis <span class="fname" style="font-family:var(--mono);color:var(--accent);">Icon=apiovnia</span> — bez ścieżki, bez rozszerzenia. Theme engine sam dobierze rozmiar.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     TAURI BUILD MANIFEST
+============================================================ -->
+<section class="osblock">
+  <header>
+    <div class="os-badge">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
+    </div>
+    <div>
+      <div class="os-title">Tauri · <span style="font-family:var(--mono); color:var(--fg-dim); font-size:14px; font-weight:500">tauri.conf.json</span></div>
+      <div class="os-sub">single source · bundler genuje pozostałe targety automatycznie</div>
+    </div>
+    <div class="os-tags">
+      <span class="os-tag amber">cargo tauri build</span>
+      <span class="os-tag">cross-platform</span>
+    </div>
+  </header>
+  <div class="body">
+    <div style="font-size: 12.5px; color: var(--fg-muted); line-height: 1.6; margin-bottom: 14px;">
+      Wrzuć źródłówki do <span class="fname" style="font-family:var(--mono);color:var(--fg-dim);">src-tauri/icons/</span> i wpisz je do configu. Tauri sam wygeneruje .icns / .ico z PNG-ów (potrzebuje min. 32×32, 128×128, 128×128@2x = 256×256, plus icon.png 512+ i icon.icns/.ico).
+    </div>
+
+<div class="conf"><span class="c">// src-tauri/tauri.conf.json</span>
+{
+  <span class="k">"tauri"</span><span class="p">:</span> {
+    <span class="k">"bundle"</span><span class="p">:</span> {
+      <span class="k">"identifier"</span><span class="p">:</span> <span class="s">"dev.apiovnia.app"</span><span class="p">,</span>
+      <span class="k">"icon"</span><span class="p">:</span> [
+        <span class="s">"icons/32x32.png"</span><span class="p">,</span>            <span class="c">// linux, win small</span>
+        <span class="s">"icons/128x128.png"</span><span class="p">,</span>          <span class="c">// linux mid</span>
+        <span class="s">"icons/128x128@2x.png"</span><span class="p">,</span>       <span class="c">// = 256, macos retina src</span>
+        <span class="s">"icons/icon.icns"</span><span class="p">,</span>             <span class="c">// macos final</span>
+        <span class="s">"icons/icon.ico"</span><span class="p">,</span>              <span class="c">// windows final</span>
+        <span class="s">"icons/icon.png"</span>                  <span class="c">// fallback, 512×512 master</span>
+      ]
+    }
+  }
+}</div>
+
+    <div class="notes" style="margin-top: 20px;">
+      <div class="note">
+        <span class="lbl">Minimum required</span>
+        Tauri zbuduje cross-platform jeśli masz: <b>32×32.png</b>, <b>128×128.png</b>, <b>128×128@2x.png</b>, <b>icon.icns</b>, <b>icon.ico</b>. Resztę (drobne rozmiary) generuje bundler.
+      </div>
+      <div class="note">
+        <span class="lbl">Helper command</span>
+        Z jednego masterowego 1024×1024:<br/>
+        <span class="fname" style="font-family:var(--mono);color:var(--accent);">cargo tauri icon ./src-tauri/icons/apiovnia.png</span><br/>
+        — wygeneruje wszystkie wymagane warianty automatycznie.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     CONTEXTS PREVIEW
+============================================================ -->
+<section class="contexts">
+  <div class="ctx-card">
+    <div class="ctx-head">
+      <span>macOS Dock</span>
+      <span class="tag">retina 14"</span>
+    </div>
+    <div class="ctx-body" style="padding: 0;">
+      <div class="mock-dock">
+        <div class="dock-bar">
+          <div class="ph">F</div>
+          <div class="ph">⌘</div>
+          <div class="icon" style="width:44px;height:44px;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+            </svg>
+          </div>
+          <div class="ph">N</div>
+          <div class="ph">M</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctx-card">
+    <div class="ctx-head">
+      <span>Windows 11 Taskbar</span>
+      <span class="tag">100% dpi</span>
+    </div>
+    <div class="ctx-body" style="padding: 0; display: block; min-height: auto;">
+      <div style="background: linear-gradient(135deg, #1a1a1d, #2a2a30); padding: 48px 0 0; min-height: 120px; display: flex; align-items: flex-end;">
+        <div class="mock-taskbar">
+          <div class="tb">▤</div>
+          <div class="tb">⊞</div>
+          <div class="tb">Q</div>
+          <div class="tb live">
+            <div class="icon" style="width: 24px; height: 24px;">
+              <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+                <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="7"/>
+                <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              </svg>
+            </div>
+          </div>
+          <div class="tb">E</div>
+          <div class="tb">B</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctx-card">
+    <div class="ctx-head">
+      <span>GNOME Activities</span>
+      <span class="tag">96px grid</span>
+    </div>
+    <div class="ctx-body" style="padding: 0;">
+      <div class="mock-gnome">
+        <div class="gnome-grid">
+          <div class="g">F</div>
+          <div class="g">T</div>
+          <div class="g">⌘</div>
+          <div class="icon" style="aspect-ratio: 1; width: 100%; height: auto;">
+            <svg viewBox="0 0 100 100" style="position:absolute;inset:14%">
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke="#2A2A2F" stroke-width="2.5"/>
+              <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3"/>
+              <circle cx="50" cy="50" r="11" fill="#F59E0B"/>
+              <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7"/>
+            </svg>
+          </div>
+          <div class="g">N</div>
+          <div class="g">M</div>
+          <div class="g">B</div>
+          <div class="g">C</div>
+          <div class="g">D</div>
+          <div class="g">E</div>
+          <div class="g">·</div>
+          <div class="g">·</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer>
+  <span>apiovnia · honeycomb · OS export spec v1</span>
+  <span>26 png + 1 svg + 2 binaries (.icns / .ico)</span>
+</footer>
+
+</body>
+</html>

@@ -68,6 +68,8 @@ pub fn run() {
             commands::execution::execute_request,
             commands::execution::get_last_response,
             commands::execution::build_request_snippet,
+            commands::execution::list_history,
+            commands::execution::get_history_response,
             commands::crypto::enable_env_encryption,
             commands::crypto::disable_env_encryption,
             commands::crypto::unlock_env,
