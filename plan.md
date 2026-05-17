@@ -872,12 +872,589 @@ ikonę `IC.plus` wewnątrz CTA buttona z amber background.
 
 ---
 
-## Faza 6-9 — PENDING
+## Faza 6 — DONE ✅ (2026-05-17)
 
-- **Faza 6 — Crypto / master password** (Argon2id + AES-GCM, unlock modal — `artifact-unlock.jsx`).
-- **Faza 7 — OpenAPI import** (`oas3`, mapping do collections + envs).
-- **Faza 8 — Cmd palette + global shortcuts** (⌘K, ⌘N, ⌘1/2/3, ⌘P, ⌘F).
-- **Faza 9 — Polish & release** (History panel widoczny w UI, OpenAPI export, packaging dla macOS/Linux).
+**Cel zrealizowany:** mogę oznaczyć env jako encrypted, ustawić master password,
+encryptować wszystkie variable values + override fields (kolumny secret-bearing).
+Po restarcie app klucz znika; próba użycia env → unlock modal. Auto-lock po
+10 min idle.
+
+### Backend (`apiovnia-crypto`)
+
+- `EnvKey([u8; 32])` z `Drop` + `zeroize::Zeroize` — bufor klucza zerowany
+  przed dealokacją.
+- `derive_key(password, salt)` — Argon2id, OWASP 2024 baseline (m=19_456 KiB,
+  t=2, p=1, out=32). Salt 16 bajtów per env.
+- `seal/open` — AES-256-GCM, format `nonce(12) ‖ ct ‖ tag(16)`.
+  `seal_str/open_str` to ich base64-wrappery dla kolumn TEXT.
+- `make_password_check` / `verify_password_check` — encryptujemy fixed
+  marker `apiovnia/v1/password-check` przy seal envu; przy unlock derywujemy
+  klucz z user-podanego hasła i próbujemy odszyfrować marker. Działa →
+  hasło poprawne. AEAD failure → wrong password (jeden komunikat, nie
+  rozróżniamy żeby nie wyciekać info).
+- 13 unit testów: round-trip (short/long/string), unique nonces, wrong key,
+  tampered tag, tampered nonce, too-short ciphertext, password check
+  round-trip, password check wrong key, UTF-8 reject, random salt non-zero.
+
+### Backend (`apiovnia-crypto::password_policy`)
+
+- `zxcvbn` 3.1 — Dropbox port. Dla nas idealny bo łapie słownik + l33t +
+  keyboard walks + daty + powtórzenia, czyli `password1234` ma score 0
+  niezależnie od długości.
+- `score_password(pw) -> PasswordStrength { score, label, crack_time_display,
+  warning, suggestions, meets_policy, long_enough }`. `crack_time_display`
+  jest human readable (`"3 days"`, `"centuries"`) — model offline slow hash
+  (10⁴ guess/s), bo to nasz realny attacker przy Argon2id.
+- `validate_policy(pw)` — enforce ≥ 8 znaków + score ≥ 3 ("safely
+  unguessable"). Defense-in-depth: re-walidowane na backendzie nawet jak
+  frontend gating zostanie pominięty (chyba że pro user opt-in z bypass).
+- 8 unit testów: rejects short, rejects dictionary, accepts strong passphrase,
+  score labels, validate policy paths, crack-time format.
+
+### Backend (`apiovnia-storage`)
+
+- Schema 0001_init.sql już miało `requires_unlock`, `is_encrypted`, `salt`,
+  `password_check` na `environments` — wystarczyło nie ruszać i dopisać
+  metody.
+- `EnvironmentRepo::encryption_meta` / `set_encryption_in_tx` /
+  `clear_encryption_in_tx` — getter + tx-aware settery. Specjalnie tx-aware,
+  bo pierwotnie zrobiłem przez pool i dostałem `database is locked` —
+  SQLite single-writer, otwarta transakcja na bulk-rewrite + osobny pool
+  write na env-flip = deadlock z 5s busy timeout.
+- `EnvVariableRepo::rewrite_values_in_tx` — bulk UPDATE wszystkich values
+  dla env, używane przez enable/disable encryption (atomic migration).
+- `OverrideRepo::get_raw` / `list_raw_for_env` / `rewrite_row_in_tx` /
+  `upsert_raw` — raw-cols path obok typed path. Repos pozostają
+  crypto-agnostic, encryption/decryption robimy w command layer.
+- `RawOverrideCols::from_domain` / `into_domain` — typed ↔ raw bridge.
+
+### Backend (`apiovnia-tauri`)
+
+- `SessionKeyStore` w AppState: `Arc<RwLock<HashMap<EnvironmentId,
+  StoredKey>>>`, gdzie `StoredKey { key: EnvKey, last_used: Instant }`.
+  Klucze NIGDY nie przekraczają IPC. Auto-lock lazy: każdy `with_key`
+  / `is_unlocked` / `unlocked_ids` sprawdza `elapsed > IDLE_AUTO_LOCK
+  (10 min)` i evictuje stale entries (`Drop = Zeroize`).
+- `commands/crypto.rs` z 7 IPC:
+  - `enable_env_encryption(env_id, password, bypass_policy)` — generuje
+    salt, derives key, encryptuje wszystkie istniejące vars + overrides
+    w jednej transakcji, zapisuje meta. `bypass_policy` to escape hatch
+    dla pro userów (skipuje zxcvbn score + length floor, ale non-empty
+    nadal wymagane bo Argon2 musi z czego derywować).
+  - `disable_env_encryption(env_id, password)` — verify hasła via
+    `verify_password_check`, decrypt wszystkiego w tx, clear meta.
+  - `unlock_env(env_id, password)` — derive + verify → load do store.
+  - `lock_env(env_id)` — explicit drop, zeroize on Drop.
+  - `is_env_unlocked(env_id) -> bool` — z lazy eviction.
+  - `list_unlocked_envs() -> Vec<EnvironmentId>` — j.w., używane na
+    startup do hydracji frontendowego setu.
+  - `score_password(pw) -> PasswordStrength` — live scoring dla meterа.
+    Stateless, nic nie loguje.
+- `EnvLocked(env_id)` jako nowy wariant `StorageError` z formattem
+  `"ENV_LOCKED:{env_id}"` — frontend pattern-matchuje na prefiksie żeby
+  wystrzelić unlock modal z odpowiednim env.
+- Modyfikacje istniejących commands:
+  - `list_env_variables` / `upsert_env_variable` / `delete_env_variable`
+    — gdy env encrypted, encrypt/decrypt na granicy. Bez session key →
+    EnvLocked propaguje.
+  - `get_override` / `upsert_override` / `delete_override` — analogicznie,
+    przez raw cols path. URL/method/body_type zostają plaintext (low
+    entropy + debuggable w sqlite3), reszta cipherem.
+  - `execute_request(req, env)` — load env, jeśli encrypted to decrypt
+    vars + override row przed resolverem. Brak klucza → EnvLocked
+    bubbling up do frontu.
+
+### Frontend
+
+- `types/domain.ts` — `PasswordStrength` mirror.
+- `api/ipc.ts` — 7 nowych wrapperów: `enableEnvEncryption(envId, pw,
+  bypassPolicy=false)`, `disableEnvEncryption`, `unlockEnv`, `lockEnv`,
+  `isEnvUnlocked`, `listUnlockedEnvs`, `scorePassword`.
+- `stores/app.svelte.ts`:
+  - `unlockedEnvIds: Set<string>` — session-only mirror SessionKeyStore.
+  - `unlockPrompt: { envId, retry? } | null` — gdy backend zwróci
+    EnvLocked, store stawia ten state, App.svelte renderuje UnlockEnvModal
+    z opcjonalnym retry callback (typowo: powtórz Send po unlock).
+  - `isEnvLockedError` / `envIdFromLockedError` helpery, używane wewnątrz
+    `executeActive`, `refreshEnvVars`, `refreshActiveOverride`.
+  - Actions: `enableEnvEncryption(envId, pw, bypass=false)`,
+    `disableEnvEncryption`, `unlockEnv`, `lockEnv`, `promptUnlock`,
+    `dismissUnlockPrompt`, `isEnvLocked(envId)`.
+  - `loadAll` startuje od `refreshUnlockedSet()` żeby (w przyszłości,
+    jakby ktoś implementował persistencję klucza) frontend wiedział
+    co jest unlocked.
+- `PromptModal` dostał `kind?: "text" | "password"` — input zamaskowany
+  kropkami, autocomplete off, mono font. Używane przez disable-encryption
+  prompt.
+- `UnlockEnvModal.svelte` — port `artifact-unlock.jsx`: lock-icon header,
+  env summary card (color-coded dot + locked pill), password field
+  z amber border + ring + show/hide eye toggle, Cancel + Unlock buttons,
+  retry callback po sukcesie. Pretty-fail messages (`wrong password →
+  "Wrong password — try again."`).
+- `SetEnvPasswordModal.svelte` — sealing flow:
+  - Live strength meter (5 segmentów kolorowanych według score tier:
+    red 0-1, amber 2, green 3-4, glow-green 4).
+  - `Cracking time: ~3 days / centuries` line z `PasswordStrength.crackTimeDisplay`.
+  - Warning + suggestion z zxcvbn pokazują się jako amber hint pod
+    meterem.
+  - "Apiovnia cannot recover this password" jako loud amber callout
+    z bold opener — zamiast wcześniejszego timid grey hint.
+  - Pro-user checkbox: "I'm a pro user — bypass password policy, I know
+    what I'm doing." Domyślnie off, dashed border. Gdy on → border + tekst
+    zmieniają się na amber. `canSubmit` ignoruje `meetsPolicy` gdy bypass
+    true, ale empty-password nadal blokuje.
+  - Confirm field + mismatch hint na czerwono.
+- `EnvSelector.svelte` — pill pokazuje 🔒 (locked) / 🔓 (unlocked this
+  session) gdy `env.isEncrypted`. Dropdown rzędy mają hover-revealed
+  Lock/Unlock button po prawej.
+- `EnvManageModal.svelte`:
+  - "Lock with password…" CTA dla plaintext envów (otwiera
+    SetEnvPasswordModal).
+  - Dla encrypted+unlocked: "Lock" (drop session key) + "Disable
+    encryption…" (dialog prompt z `kind:"password"` → verify + bulk
+    decrypt).
+  - Dla encrypted+locked: pełnopanelowy lock screen z "Unlock {env}"
+    CTA zamiast variable editora.
+  - Status pill "unlocked"/"locked" obok nazwy envu.
+- `EnvOverridesTab.svelte` — gdy active env encrypted+locked, renderuje
+  lock screen z unlock CTA zamiast field rows.
+- `App.svelte` mountuje `UnlockEnvModal` na końcu, kontrolowany przez
+  `app.unlockPrompt`.
+
+### Auto-lock (10 min idle, lazy)
+
+- `IDLE_AUTO_LOCK = 10 min`. Każda enkrypcja/dekrypcja przez `with_key`
+  refreshuje `last_used`; każdy peek (`is_unlocked`, `unlocked_ids`)
+  evictuje stale entries ale nie odświeża. Czyli zostawienie modala
+  otwartego ≠ session extension; aktywna praca tak.
+- User dostanie EnvLocked przy następnej akcji po idle → frontend pokaże
+  unlock modal → identyczny flow co restart. Zero nowej UI potrzeba.
+- Bez background threadu — wszystko lazy on access.
+
+### Quality gates
+
+- `pnpm check` ✓ (275 plików, 0/0/0)
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓ (**61/61**: 33 core + 21 crypto (13 cipher
+  + 8 policy) + 2 http + 5 storage)
+- `pnpm build` ✓
+
+---
+
+## Faza 8 — DONE ✅ (2026-05-17)
+
+**Cel zrealizowany:** ⌘K spotlight-style palette + ⌘N skrót. Z palety
+nawiguję do dowolnego requestu / kolekcji / projektu / envu w aktywnym
+projekcie, odpalam akcje (New X, env management, encryption flow,
+Copy as curl). Cross-platform mod-key auto-detect.
+
+### Frontend
+
+- `lib/keymap.ts` — single window-level keydown listener z platform detect
+  (`navigator.platform` → Cmd na macOS, Ctrl reszta). Skróty:
+  - `⌘K` toggle palette (działa wszędzie, też w inputach — meta nav)
+  - `⌘N` new request prompt (suppressed w inputach żeby nie kradło typowania)
+  - Context-scoped już istniejące: `⌘P` filter, `⌘Enter` Send, `⌘F` JSON search
+- `lib/components/modals/CommandPalette.svelte` — custom Svelte 5
+  (nie cmdk, spójność z resztą modali). Native `<dialog>` + focus trap,
+  Spotlight-style position (14vh od góry, 640×60vh, radial dim).
+- Catalog load na każde otwarcie: `listCollections(project) + Promise.all(
+  listRequests(c))`. Typowo <100ms. Bez cache — palette krótkożyjące.
+- Items: requesty (z method badge + breadcrumb), kolekcje, projekty
+  (cross-project switch), envy aktywnego projektu, dynamiczne akcje per env
+  (Enable/Disable encryption, Lock), kontekstowa akcja "Copy as curl: {name}",
+  "Manage envs & variables", "New X…".
+- Custom fuzzy ranking: case-insensitive substring + boosty (start label +1000,
+  word boundary +600 malejące z pozycją, hint-only weak +50, krótsze labele
+  wygrywają tie). Tie-break per kind: request > collection > env > project > action.
+- Keyboard: ↑↓ nav, Enter run, Esc close, mouse hover też zmienia cursor;
+  auto-scrollIntoView dla długich list.
+
+### Quality gates
+
+- `pnpm check` ✓ (278 plików, 0/0/0)
+- `cargo test --workspace` ✓ (61/61 — bez zmian)
+
+**Decyzja:** `⌘1/2/3` (focus panel) odłożone do Phase 9 — wymaga zdefiniowania
+co znaczy "focus" per panel (filter input vs first row vs URL bar) plus
+visual emphasis story.
+
+---
+
+## Faza 8.5 — Palette polish + Copy as curl — DONE ✅ (2026-05-17)
+
+Drobne rozszerzenia palette + jeden killer ficzer.
+
+### Lifted modals do globalnego state
+
+- `EnvManageModal` + `SetEnvPasswordModal` zamontowane raz w `App.svelte`,
+  kontrolowane przez store: `envManageOpen`, `envPasswordSetupId`. Wcześniej
+  były lokalne w `DetailPanel` / `EnvManageModal` — przekierowanie wymagało
+  prop-drillingu, niepraktyczne dla palette.
+- `disableEncryptionWithPrompt(envId, name)` wyciągnięte ze `EnvManageModal`
+  do store action — jeden flow używany z modal + palette.
+
+### Rename "Lock with password…" → "Enable encryption…"
+
+W EnvManageModal button dla plaintext envu. Spójne nazewnictwo z bratnim
+"Disable encryption…", lepsza para "enable/disable" niż "lock with
+password/disable".
+
+### Nowe akcje w palette
+
+- **Manage envs & variables** — otwiera EnvManageModal (disabled bez projektu)
+- Per encrypted env: **Disable encryption for {env}** + **Lock {env}** (gdy unlocked)
+- Per plaintext env: **Enable encryption for {env}**
+- **Copy as curl: {active request}** — kontekstowa akcja na aktywny request
+  (disabled gdy nic nie wybrane). Pojedyncza akcja zamiast per-request, żeby
+  duże kolekcje nie zaśmiecały palety.
+
+### Copy as curl (killer feature)
+
+- `apiovnia-core::curl::to_curl(&Request) -> String` — pure builder, **17
+  unit testów**. Pokrywa:
+  - `-X METHOD` (omijany dla GET — curl default)
+  - Query params (enabled-only) folded into URL, RFC 3986 percent-encoded
+  - `--user 'u:p'` dla Basic auth (canonical curl idiom)
+  - `-H 'Authorization: Bearer …'` dla Bearer
+  - ApiKey-in-header → header; ApiKey-in-query → folded do URL
+  - JSON body → `--data-raw` + auto Content-Type (chyba że user już ustawił)
+  - Raw body → `--data-binary`
+  - Form body → `--data-urlencode 'k=v'` per row
+  - Multipart → `--form 'key=value'` / `--form 'key=@/path;type=mime'`
+  - POSIX-safe single-quote escape z `'\''` dance dla apostrofów w wartościach
+  - Auth emit **przed** user headers (user wygrywa — parity z executorem)
+  - `\` continuations dla czytelnego paste do terminala
+- IPC `build_curl(request_id, env_id)` — dzieli nowy helper `load_env_context`
+  z `execute_request` (DRY refactor — wcześniej resolution+decryption była
+  inline 35-linijkową ścianą). EnvLocked propaguje normalnie → frontend
+  pokazuje unlock modal z retry callback który ponawia copy po unlocku.
+- Frontend `app.copyRequestAsCurl(id)`: flush save → IPC → `navigator.clipboard.writeText` → toast.
+- UI entry points:
+  - `RequestsPanel` context menu (right-click + ⋯ button) → nowy item **Copy as curl**
+  - Command palette → **Copy as curl: {active request name}**
+
+### Global toast host
+
+- `ToastHost.svelte` — mini bottom-right notification, slide-in animation,
+  auto-dismiss 2.2s, klik zamyka. `ok`/`err` warianty (zielony check / czerwony x).
+- `app.showToast(text, kind)` — generic dispatch. Newest replaces older
+  (zero queue żeby user widział latest action, nie backlog).
+- Używany przez Copy-as-curl, podstawa pod kolejne "did the thing" feedbacki.
+
+### Quality gates
+
+- `pnpm check` ✓ (278 plików, 0/0/0)
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓ (**78/78**: 50 core (33 + 17 curl) + 21 crypto
+  (13 cipher + 8 policy) + 2 http + 5 storage)
+- `pnpm build` ✓
+
+---
+
+## Faza 7 — OpenAPI import + export — DONE ✅ (2026-05-17)
+
+**Cel zrealizowany:** import dowolnego `OpenAPI 3.x` YAML/JSON do nowej
+kolekcji (z mapingiem servers→environments, security→auth, request body
+z `$ref` schema resolution + dummy synth z heurystyką typów + formatów).
+Export kolekcji do `{project}_{collection}.yaml` z **agresywnym secret
+scrubbing** (typed placeholdery per-typ) + **inferred per-request schema
+w components.schemas z `$ref` link** z media type. **Last-win + abort**
+na (method, path) collision z konkretnym error msg żeby user wiedział
+co poprawić. Persistent **OpLog panel** z tabelaryczną stats + warnings
++ "Download log" button (zapisuje `.log` z pełnym audit trailem).
+
+### Backend (`apiovnia-openapi`)
+
+- **`redact.rs`** — secret scrubbing z typed placeholderami:
+  - Headers (exact match case-insensitive): `Authorization`, `X-API-Key`,
+    `Cookie`, `X-CSRF-Token`, etc. → `<your-bearer-token>` / `<your-api-key>` /
+    `<your-cookie>` / `<your-token>`
+  - Query params + body fields (substring): `password` / `secret` /
+    `token` / `api_key` / `bearer` / `jwt` / `ssn` / `cvv` / `pin` / `otp` /
+    `private_key` / `credentials` etc. → typed placeholder per category
+  - Auth: Bearer/ApiKey value → placeholder; Basic password → placeholder,
+    username preserved
+  - Multipart file paths → `./placeholder.bin`
+  - `Policy.extra_*` lists pod Phase 11 user-customizable list
+  - 14 unit testów
+
+- **`export.rs`** — buduje `oas3::Spec`:
+  - Required fields: `openapi: "3.0.3"`, `info.title/version`, paths,
+    `responses: '200': Success` per op
+  - `servers[]` z unique URL bases (BTreeSet dedup), `securitySchemes`
+    w components z stable nazwami (`bearerAuth`/`basicAuth`/`apiKeyAuth`)
+  - Path param detection: `{name}` → `parameters: in: path, required: true`,
+    `{{var}}` (Apiovnia template) skipuje
+  - **Schema inference z JSON example** (`schema_from_example` recursive):
+    - string → `type: string` + format detection (date-time / date / email / uuid / uri)
+    - integer → `type: integer, format: int64`
+    - number → `type: number, format: double`
+    - boolean / null → odpowiednio
+    - array → `type: array, items: {recursive z pierwszego elementu}`
+    - object → `type: object, properties: {recursive}, required: [non-null keys]`
+  - Per-request schema emitowana jako `{PascalCase(opId)}Request` w
+    `components.schemas`, media type referuje przez `$ref`
+  - **Last-win + abort** na (method, path) collision → `ExportError::Collision { method, path, requests: [Vec<String>] }` z user-friendly message
+  - 21 unit testów (basic + format hints + schema inference + collision + nulls + unparseable body)
+
+- **`import.rs`** — parsuje YAML lub JSON (try YAML first → JSON fallback):
+  - `info.title` → Collection name (fallback "Imported")
+  - `paths × methods` → Request per op, name = `summary || operationId || "{method} {path}"`
+  - `parameters` query/header → `params`/`headers`, path → preserved jako `{name}` w URL + warning
+  - `requestBody.content["application/json"]`: jeśli `example` → użyj wprost; jeśli `$ref` → **resolve via `mt.schema(spec)`** → **synthesize dummy** (`synthesize_from_schema` recursive z depth guard, allOf merge, anyOf/oneOf pick-first, format hints dla date-time/email/uuid/uri/ipv4/ipv6)
+  - `securitySchemes` (operation-level wins nad global): Bearer/Basic/ApiKey (empty values do uzupełnienia) → `AuthConfig`; OAuth2/OpenIdConnect/mTLS → warning + None
+  - `servers[]` 2+ → `Environment` per server (name z `description` parse: prod/stage/dev/qa/test/sandbox/local) + per-request `url_override` w `EnvOverride`
+  - 16 unit testów + **1 integration test na real petstore z `tests/petstore_sample.yaml`**
+
+### Backend (storage + IPC)
+
+- `CollectionRepo::insert_full` / `RequestRepo::insert_full` — bulk insert
+  for OpenAPI import (pre-allocated IDs, complete rows)
+- `commands::openapi::import_openapi(project_id, file_path) -> ImportResultDto` —
+  reads file, parses, persists collection + requests + envs + overrides
+  (with env-id remap z parsed do real ID), returns DTO z rows/warnings/log
+- `commands::openapi::export_collection_openapi(collection_id) -> ExportResultDto` —
+  loads collection + project (for filename), all requests, redacts each,
+  builds spec, returns YAML + suggested filename + rows + warnings + log
+- `commands::openapi::save_text_file(path, contents)` — generic helper
+  for OpLog "Download log" + YAML save (frontend picks path via dialog)
+- Suggested filenames: `{project}_{collection}.yaml` (export) /
+  `import_{file_stem}_{date}.log` / `export_{project}_{collection}_{date}.log`
+  with `chrono::Utc` timestamp
+
+### Frontend
+
+- `types/domain.ts` — `ImportResult` / `ExportResult` / `ImportRow` / `ExportRow` mirrors
+- `api/ipc.ts` — `importOpenapi` / `exportCollectionOpenapi` / `saveTextFile` wrappers
+- Store:
+  - `OpLog` type + `state.opLog` field + `showOpLog` / `dismissOpLog` actions
+  - `importOpenapiForProject(projectId, filePath)` — IPC + cascade-refresh
+    (cache projects → collections → envs → switch to new collection +
+    new request body) + show OpLog
+  - **`exportCollectionInteractive(collectionId)`** — build IPC first (gives
+    `yamlFilename` with `{project}_{collection}.yaml`), then `tauri-plugin-dialog::save`
+    with that defaultPath, then `saveTextFile` write. Building BEFORE
+    dialog is what lets the suggested filename include the project name —
+    frontend doesn't always have project context.
+- `OpLogHost.svelte` — persistent bottom-right (460×65vh, slide-in 180ms,
+  z-index 900), tabular rows (method badge + path + name + redaction count
+  for export), collapsible warnings section, **"Download log"** button →
+  native save dialog → `saveTextFile`. Closed via × or "Done" (no auto-dismiss).
+- `ProjectsPanel` context menu: project → "Import OpenAPI…" (`open` file
+  picker → `importOpenapiForProject`); collection → "Export OpenAPI…"
+  (`exportCollectionInteractive`)
+- `CommandPalette`: `Import OpenAPI into {project}` + `Export {collection}
+  as OpenAPI` (gated on active project / collection)
+- Tauri capability: `dialog:allow-save`
+
+### Quality gates
+
+- `pnpm check` ✓ (279 plików)
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓ (**135/135**: 50 core + 21 crypto + 2 http +
+  **56 openapi** (14 redact + 21 export + 16 import + petstore integration) +
+  **5 import schema synth tests** + 5 storage)
+- `pnpm build` ✓
+
+### Bugfixes po user testach
+
+- **Petstore `addPet` body** — bez `$ref` resolution na schemę emitowaliśmy
+  pusty `{}`. Fix: `synthesize_from_schema` walking `properties`/`items`
+  z format hints. Real petstore integration test żeby nie regresnęło.
+- **Filename `{project}_{collection}.yaml`** — frontend liczył lokalny
+  `defaultPath` ZANIM wołał IPC, więc backend filename był ignorowany.
+  Fix: odwrócony flow — build → dialog z backend's filename → save.
+
+---
+
+## Faza 8.6 — Copy as… submenu (curl/python/httpie/javascript/powershell) — DONE ✅ (2026-05-17)
+
+### Backend
+
+- **Refaktor `apiovnia-core::curl` → `apiovnia-core::snippets`** module:
+  - `SnippetFormat` enum (`Curl | PythonRequests | Httpie | JavaScriptFetch | PowerShell`) z `.render(req) -> String` dispatchem
+  - Shared helpers w `mod.rs`: `effective_query_params`, `url_with_params`, `percent_encode`, `parse_kv_list`, `parse_multipart_list`, `MultipartRow`, `user_has_content_type`
+  - 5 plików per format, każdy z własnymi unit testami
+
+- Per-format design:
+  - **curl** (zachowany behavior z Phase 8.5): `\` continuations, `--user 'u:p'` Basic, `--form key=@/path[;type=mime]`
+  - **Python `requests`**: `import requests` + `requests.<verb>(url, headers=, json=/data=/files=, auth=)`. Multipart przez `files=[(name, (filename, open(path,'rb'), mime))]`. Basic natywne `auth=("u","p")`.
+  - **HTTPie**: `Name:value` headers, `name==value` query, `--auth u:p`, `--raw '{...}'` dla JSON, `--form k=v` form, `--multipart k@/path` files.
+  - **JavaScript `fetch`**: top-level await, `JSON.stringify({...})` z pretty object literal, `URLSearchParams` form, `FormData` multipart z TODO comment dla files, `btoa()` dance dla Basic.
+  - **PowerShell**: `$headers = @{...}` + `Invoke-RestMethod -Uri ... -Method ... -Headers $headers -Body $body`. Basic przez `[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(...))`. Multipart przez `-Form @{key = Get-Item path}` (PS 6+). Single-quote literal dla JSON body żeby nie było `$var` interpolacji.
+
+- **IPC `build_request_snippet(request_id, env_id, format)`** zastąpił `build_curl`. Dzieli `load_env_context` z `execute_request` (env resolve + decryption). EnvLocked propaguje normalnie.
+
+### Frontend
+
+- `SnippetFormat` TS type + `snippetFormatLabel()` + `SNIPPET_FORMATS` exported ze store
+- `app.copyRequestAsSnippet(requestId, format)` — flush save → IPC → clipboard → format-aware toast (`Copied Python (requests) to clipboard`); EnvLocked → unlock modal z retry
+- **`ContextMenu` rozszerzony o `children?: MenuItem[]`** — hover/focus na rzędzie z dziećmi otwiera **submenu** anchored przy prawej krawędzi (recursive self-import per Svelte 5, nie deprecated `<svelte:self>`). Rząd dostaje `›` caret indicator + `active` state.
+- **`RequestsPanel`** context menu: stary "Copy as curl" → **"Copy as…"** parent z 5 dziećmi (curl / Python (requests) / HTTPie / JavaScript (fetch) / PowerShell)
+- **`CommandPalette`**: zamiast jednej akcji 5 osobnych (`Copy as curl: {name}`, `Copy as Python (requests): {name}`, etc.) — searchable per format ("python" → Python, "fetch" → JavaScript)
+
+### Bugfix po user teście
+
+- **Submenu click nie odpalał akcji** — outside-click handler robił
+  `document.querySelector('.menu')` (zwraca tylko PIERWSZY match = root menu),
+  więc klik w submenu rzędzie był traktowany jako outside → `onClose()` na
+  root → cała struktura unmountowała się na `mousedown` zanim `click`
+  dotarł do submenu. Fix: `querySelectorAll('.menu')` + iteracja przez
+  wszystkie otwarte menu w drzewie.
+
+### Quality gates
+
+- `pnpm check` ✓ (279 plików)
+- `cargo clippy --workspace --all-targets -- -D warnings` ✓
+- `cargo test --workspace` ✓ (**163/163**: **78 core** (50 base + 17 curl + 6 python + 8 httpie + 6 javascript + 6 powershell = 43 snippet tests) + 21 crypto + 2 http + 56 openapi + 1 integration + 5 storage)
+- `pnpm build` ✓
+
+---
+
+## Fazy 9-11 — PENDING
+
+### Punch-list co realnie zostało
+
+> Phases 0-8 + 8.5 + 8.6 + 7 wszystkie domknięte. Do MVP zostało już tylko
+> **Phase 9** (app icon, history panel UI, packaging). Phase 10/11 to
+> post-MVP polish.
+
+**Faza 9 — Polish & release** _(MVP wrap-up, ~2-3 dni)_
+- **App icon** — obecnie systemowy default "cog" w dock/taskbarze.
+  Zaprojektować/zlecić właściwą ikonę Apiovni (amber/dark, prosty kształt,
+  czytelny w 16/32/64/128/256/512). `tauri-icon` CLI generuje wszystkie
+  rozmiary z 1024² PNG. Pliki w `src-tauri/icons/`, zarejestrować w
+  `tauri.conf.json`.
+- **History panel UI** — backend gotowy (`HistoryRepo::list_recent`),
+  dorzucić `HistoryPanel.svelte` w lewy dolny róg (ikona już w designie).
+  Lista ostatnich 200 wykonań, klik → otwiera response viewer z zapisaną
+  odpowiedzią.
+- **`⌘1/2/3` focus panel** (z Phase 8) — wymaga zdefiniowania focus
+  targetów per panel (filter input / first row / URL bar).
+- **Empty states & onboarding** — fresh DB pokazuje full-screen "Welcome
+  to Apiovnia · Create your first project".
+- **Packaging** — `tauri.conf.json` ma `bundle.targets: "all"` ale brak
+  signing config. Build dla macOS (.dmg + .app), Linux (.deb +
+  .AppImage), Windows (.msi) nice-to-have. Auto-update **skip** dla MVP.
+
+**Faza 10 — Security & UX hardening** _(post-MVP, opcjonalne — patrz niżej)_
+- Configurable auto-lock timeout, UI countdown, lock-on-blur/system-lock,
+  change-master-password, per-field secrets, hardware keychain wrap,
+  brute-force throttling, audit log, full-DB encryption (SQLCipher),
+  crypto rotation/versioning. Pełna lista w sekcji "Faza 10 — pomysły".
+
+**Faza 11 — Settings panel + themes** _(post-MVP, ~2-3 dni)_
+
+Settings ikonka w lewym dolnym rogu już jest w designie ale nic nie robi.
+Domknąć: otwiera modal/panel z konfiguracją per-user.
+
+- `SettingsModal.svelte` (lub side-panel sliding from right) z sekcjami:
+  - **Appearance** — theme picker (3-4 motywy):
+    - `apiovnia-default` (current amber/dark)
+    - `monokai` — klasyczny czarno-zielony z różowymi akcentami
+    - `tokyo-night` — granatowo-fioletowy
+    - `light` — biała baza, ciemne akcenty (no nareszcie)
+    - (opcjonalnie: `solarized-dark`, `gruvbox`)
+  - Theme = zestaw CSS variables w `app.css`; przełącznik nadpisuje
+    `:root` w klasie body. Tokeny już są wycentralizowane, więc dodanie
+    motywu = nowa CSS var bundle (~30 zmiennych). Persisted w localStorage.
+  - **Security** (z Phase 10 hooków, jak będą):
+    - Auto-lock timeout (5 / 10 / 15 / 30 min / never)
+    - Lock-on-blur toggle
+    - Lock-on-system-lock toggle
+  - **Editor**:
+    - JSON body editor: tab size (2/4), trailing newline on save
+    - Send timeout (5/15/30/60s)
+    - Max response body size (1/2/5/10 MiB)
+  - **Network**:
+    - Proxy URL (HTTP/HTTPS/SOCKS5)
+    - Custom CA cert path (file picker)
+    - Verify TLS toggle
+  - **History**:
+    - Retention (last N executions, default 200; bumpable do 1000)
+    - "Clear all history" destructive button
+  - **About** — version, repo link, license, "Built with Tauri/Svelte/Rust"
+- Storage: `app_settings` SQLite table (single row, JSON blob) + cached
+  w nowym `lib/stores/settings.svelte.ts`. Loaded once on boot.
+- Theme apply: `$effect` w App.svelte ustawia `document.documentElement.dataset.theme`
+  na zmianę → CSS `:root[data-theme="monokai"] { --bg: ... }`.
+
+**Audit do zrobienia przed implementacją:** prześledzić appkę i zebrać
+listę hardcoded'ów które mają sens jako settings:
+- timeouty (executor: 30s — hardcoded)
+- debounce save (250ms — hardcoded)
+- body cap (2MiB — hardcoded)
+- history cap (200 — hardcoded w design intent)
+- panel sizes default (już persisted ale bez UI do resetu)
+- font size (UI 12-14px, mono 12-13px — może `compact|cozy|comfortable`?)
+
+---
+
+### Otwarte feature-flagi do dokończenia (mapowanie 1:1 do faz)
+
+| Co | Status | Phase |
+|---|---|---|
+| **App icon** | systemowy default | **9 (next)** |
+| History panel UI | backend done, UI brak | 9 |
+| `⌘1/2/3` focus panel | brak | 9 |
+| Onboarding empty state | brak | 9 |
+| Packaging (signing, bundle targets) | placeholdery | 9 |
+| Hardening features | brak | 10 |
+| Settings modal + themes | brak (ikona już jest, no-op) | 11 |
+
+### Faza 10 — pomysły / dług bezpieczeństwa
+
+Zebrane po Phase 6, do rozważenia gdy MVP wyląduje:
+
+- **Configurable auto-lock timeout** — settings: `5 / 10 / 15 / 30 min / never`.
+  10 min hardcoded jako default; pro userzy z napompowanym wątkiem chcą
+  dłuższe okno, paranoidalni krótsze. Trzymać per-user, nie per-env.
+- **UI countdown** — `unlocked · 7m 23s left` w `EnvSelectorze` przy
+  encrypted+unlocked env. Wymaga frontend polla `is_env_unlocked` (co 30s?)
+  + nowego IPC `idle_seconds_remaining(env_id) -> u64`. Albo backend emituje
+  `tauri::Event` na 60s przed auto-lockem, frontend pokazuje subtle toast
+  "prod will lock in 1 minute — keep working to stay unlocked".
+- **Lock-on-app-blur opcja** — gdy okno Apiovni straci focus na > N sekund,
+  evictuj wszystkie klucze. Niektórzy security folks tego oczekują.
+  Wymaga `tauri::WindowEvent::Focused(false)` listenera.
+- **Lock-on-system-lock** — gdy OS robi screen lock, my robimy nasz lock.
+  Linux: `org.freedesktop.ScreenSaver.ActiveChanged` D-Bus signal. macOS:
+  `NSWorkspaceDidWakeNotification` / `NSWorkspaceSessionDidBecomeActiveNotification`.
+  Windows: `WTSSessionChange`. Realnie tylko jeśli ktoś z testerów o to
+  poprosi.
+- **Change master password flow** — obecnie nie da się zmienić hasła do
+  encrypted env bez disable+enable cyklu. Nowy IPC `change_env_password(
+  env_id, current, new)`: verify current → derive new key → re-encrypt
+  wszystkie rows → zaktualizować salt + password_check. Atomic w jednej tx.
+- **Per-field encryption flag** — zamiast whole-env on/off, per-variable
+  `is_secret` faktycznie respektować (jest już w schemacie). Wtedy
+  `base_url=https://api.dev.example` zostaje plaintext (debuggable), a
+  `api_key` zaszyfrowane. Trochę więcej UI work bo każdy row potrzebuje
+  toggla.
+- **Hardware-backed key wrap** — opcjonalnie zawijać derived key w OS
+  keychain (macOS Keychain, libsecret/GNOME Keyring na Linuxie, Windows
+  Hello/DPAPI). User wpisuje OS password raz, my zapamiętujemy klucz tam
+  zamiast w RAM-ie. Trade-off: szybsze życie codzienne, większe blast
+  radius (jak ktoś przejmie OS keychain, ma wszystko).
+- **Brute-force throttling** — design canvas mentions "Three wrong
+  attempts will throttle prod requests for 60s." Łatwy do dodania:
+  counter wrong attempts per env w SessionKeyStore + cooldown timer.
+  Niski threat na local-only app, ale UX hint że "ktoś się dobiera"
+  użyteczny.
+- **Audit log opcjonalny** — `unlock_log` table z (env_id, timestamp,
+  result). User w settings widzi historię "prod unlocked 7 razy
+  w tym tygodniu, ostatni raz 2 godziny temu". Privacy-positive bo
+  wszystko lokalne.
+- **Encrypted-at-rest cały DB** — alternatywa do per-env: cały
+  `apiovnia.db` zaszyfrowany przez SQLCipher. Wymaga unlock app-level
+  zamiast env-level. Plus: jednorazowe wpisanie hasła. Minus: pasuje
+  do MVP "envs sealed, ale projekty publiczne" gorzej. Może opcja w
+  settings: "wymagaj master password przy starcie app".
+- **Crypto rotation / versioning** — nasz format ciphertext nie ma
+  version byte. Jakbyśmy chcieli kiedyś zmienić KDF (Argon2 → scrypt?
+  albo bumpnąć m_cost), nie ma czystej ścieżki migracji. Format v2 z
+  jawnym prefiksem `apv2|nonce|ct|tag` + path `re_encrypt_v1_to_v2`.
 
 ### Co konkretnie zostało (snapshot stanu)
 
@@ -887,6 +1464,19 @@ ikonę `IC.plus` wewnątrz CTA buttona z amber background.
 - Body types: None/JSON/Form/Multipart(text+file)/Raw — wszystkie wysyłane poprawnie
 - HTTP execute z reqwest, full response viewer (Pretty JSON / Headers / Request / Raw)
 - Env CRUD + variables + per-(req,env) overrides + resolver + `{{var}}` interpolacja
+- **Encrypted envs** z master password (Argon2id + AES-256-GCM), zxcvbn
+  strength meter, pro-bypass, idle auto-lock 10 min
+- **Command palette** ⌘K + ⌘N skrót, fuzzy ranking, cross-project switch,
+  per-env akcje (enable/disable encryption, lock, manage)
+- **Copy as…** submenu z 5 formatami (curl / Python requests / HTTPie /
+  JavaScript fetch / PowerShell), pełna env resolution + decryption,
+  EnvLocked auto-unlock retry; dostępne z context-menu + palette per format
+- **OpenAPI import** (oas3, `$ref` resolution + dummy synthesis z typed
+  defaults + format hints) + **export** (z secret-scrubbing per-typ
+  placeholderami, inferred per-request schema w components z `$ref`,
+  collision abort, `{project}_{collection}.yaml` filename)
+- **OpLog panel** — persistent bottom-right tabelka z "Download log" button
+- Global toast host (transient bottom-right feedback)
 - Filtry (text + method), cascade auto-pick, smart empty states z CTA
 
 **Backend gotowy, brak UI:**
@@ -894,26 +1484,23 @@ ikonę `IC.plus` wewnątrz CTA buttona z amber background.
   pełny snapshot ExecutionResult, ale w UI nie ma jeszcze panelu — Phase 9.
 
 **Brak feature'u w ogóle:**
-- Crypto/master password — `apiovnia-crypto` crate scaffold tylko, brak impl
-- OpenAPI import/export — `apiovnia-openapi` crate scaffold tylko
-- Command palette — żaden globalny shortcut poza ⌘P (focus filter), ⌘Enter
-  (Send), ⌘F (search w JSON viewer)
+- App icon — systemowy default cog w dock/taskbarze (Phase 9)
+- `⌘1/2/3` focus panel — z Phase 8 odłożone do Phase 9 (Phase 9)
 - Packaging dla release — `tauri.conf.json` ma `bundle.targets: "all"` ale
-  bez signing config, ikon (placeholdery)
+  bez signing config (Phase 9)
+- Settings panel + themes — ikona jest, no-op (Phase 11)
+- Phase 10 hardening — patrz lista pomysłów wyżej
 
 ### Otwarte tematy / dług techniczny
 
-- **Bearer 401 z `api.udl.ai`** — Authorization header faktycznie leci
-  (potwierdzone w Request tab). To realna odpowiedź serwera. Nie nasz bug.
-- **JSON request body w przykładzie usera** — brakowało `}` przed `]` w
-  trzecim obiekcie. Linter pokaże to natychmiast po fix-up.
 - **CodeMirror "trójkącik" w gutterze** — przy obecnym setupie zhide-owany
   przez CSS `*` selektor. Jeśli wraca, kandydat na `markerFilter` w
   `lintGutter` config.
-- **History panel** — backend gotowy, brak UI. Phase 9.
-- **Multipart file size** — żadnego capa. Akceptowalne na MVP.
+- **Multipart file size** — żadnego capa. 500 MB ZIP ląduje w RAM podczas
+  Send. Akceptowalne na MVP.
 - **Per-body-field dotted-path overrides** (Phase 5 design) — odpuszczone,
   whole-body content override starcza na 95% case'ów.
+- **Phase 10 hardening** — pełna lista wyżej; nic z tego nie blokuje MVP.
 
 ### Tooling notes na następną sesję
 
