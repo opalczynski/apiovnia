@@ -77,6 +77,7 @@
       autocapitalize="off"
       placeholder="https://api.example.com/path"
       value={request.url}
+      data-focus-target="right"
       oninput={setUrl}
       onkeydown={onUrlKeydown}
     />
@@ -146,7 +147,7 @@
     padding: 0;
   }
   .url::placeholder {
-    color: var(--fg-faint);
+    color: var(--fg-muted);
   }
   .hint {
     flex-shrink: 0;

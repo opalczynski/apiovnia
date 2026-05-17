@@ -80,16 +80,6 @@
   function setMultipart(next: MultipartField[]) {
     onPatch({ bodyContent: JSON.stringify(next) });
   }
-
-  function beautify() {
-    if (request.bodyType !== "json") return;
-    try {
-      const pretty = JSON.stringify(JSON.parse(request.bodyContent), null, 2);
-      onPatch({ bodyContent: pretty });
-    } catch {
-      // Silently no-op on invalid JSON — Phase 4 will surface lint errors.
-    }
-  }
 </script>
 
 <div class="tab">
@@ -100,10 +90,6 @@
       onChange={setType}
       ariaLabel="Body type"
     />
-    <span class="grow"></span>
-    {#if request.bodyType === "json"}
-      <button class="ap-btn sm ghost" onclick={beautify}>Beautify</button>
-    {/if}
   </div>
 
   <div class="canvas">
@@ -170,9 +156,6 @@
     gap: 6px;
     padding: 8px 12px;
     border-bottom: 1px solid var(--border-soft);
-  }
-  .grow {
-    flex: 1;
   }
   .canvas {
     flex: 1;
