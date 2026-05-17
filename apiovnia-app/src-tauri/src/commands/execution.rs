@@ -8,18 +8,22 @@ use std::collections::HashMap;
 
 use apiovnia_core::{
     ids::{EnvironmentId, RequestId},
-    resolve_request,
+    model::EnvOverride,
+    resolve_request, SnippetFormat,
 };
 use apiovnia_http::{ExecutionError, ExecutionResult, HeaderEntry, ResponseBodyKind, SentRequest};
 use apiovnia_storage::{
-    repos::history::NewHistoryEntry, EnvVariableRepo, HistoryRepo, OverrideRepo, RequestRepo,
-    StorageError,
+    repos::history::NewHistoryEntry, EnvVariableRepo, EnvironmentRepo, HistoryRepo, OverrideRepo,
+    RequestRepo, StorageError,
 };
 use serde::Serialize;
 use tauri::State;
 use thiserror::Error;
 
-use crate::app_state::AppState;
+use crate::{
+    app_state::AppState,
+    commands::crypto::{decrypt_override_cols, decrypt_value_for_env},
+};
 
 #[derive(Debug, Error)]
 pub enum ExecuteError {
@@ -47,20 +51,7 @@ pub async fn execute_request(
     let pool = state.db.pool();
     let base = RequestRepo::get(pool, &request_id).await?;
 
-    // Resolve against env if one is active. Missing env / missing override /
-    // missing vars all degrade gracefully — we still send the base request.
-    let (override_opt, vars) = if let Some(env) = env_id.as_ref() {
-        let o = OverrideRepo::get(pool, &request_id, env).await?;
-        let vlist = EnvVariableRepo::list_for_env(pool, env).await?;
-        let mut map = HashMap::with_capacity(vlist.len());
-        for v in vlist {
-            map.insert(v.name, v.value);
-        }
-        (o, map)
-    } else {
-        (None, HashMap::new())
-    };
-
+    let (override_opt, vars) = load_env_context(&state, &request_id, env_id.as_ref()).await?;
     let resolved = resolve_request(&base, override_opt.as_ref(), &vars);
     let outcome = state.executor.execute(&resolved).await;
 
@@ -177,6 +168,74 @@ pub async fn get_last_response(
         final_url: row.final_url.unwrap_or_default(),
         sent,
     }))
+}
+
+/// Render a paste-ready code snippet for the given request, in the
+/// requested format (curl / Python requests / `HTTPie` / fetch / `PowerShell`).
+/// Shares the full resolution + decryption path with `execute_request`,
+/// so secrets get materialised the same way — the resulting string
+/// carries plaintext by design.
+///
+/// Locked encrypted env → `EnvLocked` bubbles up, frontend pops the unlock
+/// modal with a retry callback that re-runs this command.
+#[tauri::command]
+pub async fn build_request_snippet(
+    state: State<'_, AppState>,
+    request_id: RequestId,
+    env_id: Option<EnvironmentId>,
+    format: SnippetFormat,
+) -> Result<String, ExecuteError> {
+    let pool = state.db.pool();
+    let base = RequestRepo::get(pool, &request_id).await?;
+    let (over, vars) = load_env_context(&state, &request_id, env_id.as_ref()).await?;
+    let resolved = resolve_request(&base, over.as_ref(), &vars);
+    Ok(format.render(&resolved))
+}
+
+/// Shared resolution + (when encrypted) decryption path. Returns the
+/// optional override row + the `{{var}}` map to feed `resolve_request`.
+///
+/// `EnvLocked` propagates through `?` — the encrypted-env helpers throw
+/// it when the session key isn't loaded.
+async fn load_env_context(
+    state: &State<'_, AppState>,
+    request_id: &RequestId,
+    env_id: Option<&EnvironmentId>,
+) -> Result<(Option<EnvOverride>, HashMap<String, String>), ExecuteError> {
+    let Some(env_ref) = env_id else {
+        return Ok((None, HashMap::new()));
+    };
+    let pool = state.db.pool();
+    let env = EnvironmentRepo::get(pool, env_ref).await?;
+
+    if env.is_encrypted {
+        // Variables: list → decrypt each value.
+        let mut vlist = EnvVariableRepo::list_for_env(pool, env_ref).await?;
+        for v in &mut vlist {
+            v.value = decrypt_value_for_env(state, env_ref, &v.value)?;
+        }
+        let mut map = HashMap::with_capacity(vlist.len());
+        for v in vlist {
+            map.insert(v.name, v.value);
+        }
+        // Override: fetch raw → decrypt secret columns → parse JSON.
+        let over = match OverrideRepo::get_raw(pool, request_id, env_ref).await? {
+            Some(raw) => {
+                let decrypted = decrypt_override_cols(state, env_ref, &raw.cols)?;
+                Some(decrypted.into_domain(request_id.clone(), env_ref.clone())?)
+            }
+            None => None,
+        };
+        Ok((over, map))
+    } else {
+        let over = OverrideRepo::get(pool, request_id, env_ref).await?;
+        let vlist = EnvVariableRepo::list_for_env(pool, env_ref).await?;
+        let mut map = HashMap::with_capacity(vlist.len());
+        for v in vlist {
+            map.insert(v.name, v.value);
+        }
+        Ok((over, map))
+    }
 }
 
 const fn body_kind_str(k: ResponseBodyKind) -> &'static str {

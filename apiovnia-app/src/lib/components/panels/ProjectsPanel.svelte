@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { open } from "@tauri-apps/plugin-dialog";
 
   import Icon from "$lib/components/Icon.svelte";
   import { IC } from "$lib/components/icons";
@@ -129,6 +130,12 @@
     return [
       { label: "Rename", icon: "pencil", onClick: () => renameProject(p) },
       {
+        label: "Import OpenAPI…",
+        icon: "arrowR",
+        separatorBefore: true,
+        onClick: () => importOpenapiInto(p),
+      },
+      {
         label: "Delete project",
         icon: "trash",
         danger: true,
@@ -141,6 +148,12 @@
     return [
       { label: "Rename", icon: "pencil", onClick: () => renameCollection(c) },
       {
+        label: "Export OpenAPI…",
+        icon: "send",
+        separatorBefore: true,
+        onClick: () => exportCollectionOpenapi(c),
+      },
+      {
         label: "Delete collection",
         icon: "trash",
         danger: true,
@@ -148,6 +161,28 @@
         onClick: () => deleteCollection(c),
       },
     ];
+  }
+
+  // OpenAPI import / export flows. File picker via tauri-plugin-dialog;
+  // store actions handle the IPC + OpLog rendering.
+
+  async function importOpenapiInto(p: Project) {
+    const path = await open({
+      title: `Import OpenAPI into "${p.name}"`,
+      multiple: false,
+      directory: false,
+      filters: [{ name: "OpenAPI", extensions: ["yaml", "yml", "json"] }],
+    });
+    if (typeof path === "string") {
+      await app.importOpenapiForProject(p.id, path);
+    }
+  }
+
+  async function exportCollectionOpenapi(c: Collection) {
+    // The store owns the build → dialog → save → log dance so the suggested
+    // filename can include the project name (which the IPC knows but the
+    // panel doesn't always have at hand).
+    await app.exportCollectionInteractive(c.id);
   }
 
   /**

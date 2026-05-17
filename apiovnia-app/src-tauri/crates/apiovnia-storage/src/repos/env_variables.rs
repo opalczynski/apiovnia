@@ -81,6 +81,29 @@ impl EnvVariableRepo {
         }
         Ok(())
     }
+
+    /// Tx-aware bulk update of every variable's `value` column for one env.
+    /// Used by the enable/disable-encryption flows to flip the entire env in
+    /// one go (encrypt all → SET; decrypt all → SET). Caller supplies the
+    /// `(name, new_value)` pairs they want written.
+    pub async fn rewrite_values_in_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        env_id: &EnvironmentId,
+        new_values_by_name: &[(String, String)],
+    ) -> Result<()> {
+        for (name, value) in new_values_by_name {
+            sqlx::query(
+                "UPDATE environment_variables \
+                 SET value = ? WHERE environment_id = ? AND name = ?",
+            )
+            .bind(value)
+            .bind(env_id.as_str())
+            .bind(name)
+            .execute(&mut **tx)
+            .await?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(sqlx::FromRow)]

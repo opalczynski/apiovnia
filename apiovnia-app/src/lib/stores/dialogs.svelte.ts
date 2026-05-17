@@ -14,6 +14,9 @@ export type PromptOptions = {
   placeholder?: string;
   defaultValue?: string;
   confirmLabel?: string;
+  /** `"password"` renders the input as `type="password"` (masked, no
+   *  autocomplete). Defaults to `"text"`. */
+  kind?: "text" | "password";
 };
 
 export type ConfirmOptions = {
