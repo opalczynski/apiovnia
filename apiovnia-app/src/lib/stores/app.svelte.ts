@@ -11,7 +11,10 @@
  * localStorage so a restart returns to the last open request.
  */
 
+import { save } from "@tauri-apps/plugin-dialog";
+
 import * as ipc from "$lib/api/ipc";
+import { dialogs } from "$lib/stores/dialogs.svelte";
 import type {
   Collection,
   CollectionId,
@@ -20,11 +23,13 @@ import type {
   EnvOverride,
   EnvVariable,
   ExecutionResult,
+  ExportResult,
   Project,
   ProjectId,
   Request,
   RequestId,
   RequestSummary,
+  SnippetFormat,
 } from "$lib/types/domain";
 
 const STORAGE_KEY = "apiovnia.active.v1";
@@ -34,6 +39,30 @@ type Persisted = {
   activeProjectId: ProjectId | null;
   activeCollectionId: CollectionId | null;
   activeRequestId: RequestId | null;
+};
+
+/** One row in the OpLog table — narrow enough to share between import
+ *  (`{name, method, path}`) and export (adds `redactions`). */
+export type OpLogRow = {
+  name: string;
+  method: string;
+  path: string;
+  /** Only present for export rows; undefined for import. */
+  redactions?: number;
+};
+
+/** Bottom-right tabular notification driven by the Phase 7 OpenAPI flows
+ *  (and reusable for any future "long-lived feedback" need). Stays open
+ *  until the user dismisses; "Download log" saves `logText` to disk. */
+export type OpLog = {
+  kind: "import" | "export";
+  title: string;
+  /** Compact stats line under the title — e.g. "12 requests · 2 envs · 1 warning". */
+  subtitle: string;
+  rows: OpLogRow[];
+  warnings: string[];
+  logText: string;
+  logFilename: string;
 };
 
 function loadPersisted(): Persisted {
@@ -89,6 +118,36 @@ const state = $state({
   envVarsByEnv: {} as Record<string, EnvVariable[]>,
   /** Override for `(activeRequest, activeEnv)`, if any. */
   activeOverride: null as EnvOverride | null,
+  /** Env IDs whose session key is currently loaded in the Rust backend.
+   *  Starts empty on every app launch (session-only). */
+  unlockedEnvIds: new Set<string>(),
+  /** When the backend bounces with `ENV_LOCKED:{envId}`, we stash the id here
+   *  so the UI can pop the UnlockEnvModal at the right moment, and remember
+   *  what to retry after unlock. */
+  unlockPrompt: null as {
+    envId: EnvironmentId;
+    /** Optional retry callback to fire on successful unlock. */
+    retry?: () => void | Promise<void>;
+  } | null,
+  /** ⌘K command palette visibility. The component owns its own search /
+   *  catalog state; we only flip this here so any module (keymap, store
+   *  action, button click) can toggle. */
+  commandPaletteOpen: false,
+  /** Transient one-liner shown bottom-right of the shell (~2 s auto-dismiss).
+   *  Used by Copy-as-curl and any other "did the thing" feedback that
+   *  doesn't warrant a modal. */
+  toast: null as { text: string; kind: "ok" | "err"; seq: number } | null,
+  /** Persistent tabular feedback for OpenAPI import / export operations.
+   *  Stays open until the user dismisses (no auto-fade). Holds the
+   *  `logText` + filename so the Download-log button can save it. */
+  opLog: null as OpLog | null,
+  /** Lifted from `DetailPanel` so the command palette + future entry
+   *  points can open the env manager without prop-drilling. */
+  envManageOpen: false,
+  /** When set, App.svelte renders `SetEnvPasswordModal` for this env id.
+   *  Triggered from EnvManageModal's "Enable encryption" button AND from
+   *  the command palette's per-env action. */
+  envPasswordSetupId: null as EnvironmentId | null,
   loading: false,
   error: null as string | null,
   /**
@@ -212,8 +271,19 @@ async function refreshEnvs(projectId: ProjectId): Promise<void> {
 }
 
 async function refreshEnvVars(envId: EnvironmentId): Promise<void> {
-  const vars = await ipc.listEnvVariables(envId);
-  state.envVarsByEnv = { ...state.envVarsByEnv, [envId]: vars };
+  try {
+    const vars = await ipc.listEnvVariables(envId);
+    state.envVarsByEnv = { ...state.envVarsByEnv, [envId]: vars };
+  } catch (e) {
+    // ENV_LOCKED is expected for sealed envs that aren't unlocked yet —
+    // the variables UI key off `isEnvLocked` and renders an unlock CTA.
+    // Anything else gets surfaced through the global error bar.
+    if (isEnvLockedError(e)) {
+      state.envVarsByEnv = { ...state.envVarsByEnv, [envId]: [] };
+    } else {
+      throw e;
+    }
+  }
 }
 
 async function refreshActiveOverride(): Promise<void> {
@@ -221,7 +291,42 @@ async function refreshActiveOverride(): Promise<void> {
     state.activeOverride = null;
     return;
   }
-  state.activeOverride = await ipc.getOverride(state.activeRequestId, state.activeEnvId);
+  try {
+    state.activeOverride = await ipc.getOverride(state.activeRequestId, state.activeEnvId);
+  } catch (e) {
+    if (isEnvLockedError(e)) {
+      state.activeOverride = null;
+    } else {
+      throw e;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Crypto / unlock helpers
+// ---------------------------------------------------------------------------
+
+/** Match the `ENV_LOCKED:<envId>` sentinel produced by the Rust storage layer. */
+function isEnvLockedError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.startsWith("ENV_LOCKED:");
+}
+
+function envIdFromLockedError(e: unknown): EnvironmentId | null {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (!msg.startsWith("ENV_LOCKED:")) return null;
+  return msg.slice("ENV_LOCKED:".length) as EnvironmentId;
+}
+
+async function refreshUnlockedSet(): Promise<void> {
+  try {
+    const ids = await ipc.listUnlockedEnvs();
+    state.unlockedEnvIds = new Set(ids as unknown as string[]);
+  } catch (e) {
+    // Non-fatal — the set defaults empty.
+    // eslint-disable-next-line no-console
+    console.warn("[apiovnia] failed to fetch unlocked envs", e);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -317,6 +422,7 @@ async function loadAll(): Promise<void> {
   state.loading = true;
   state.error = null;
   try {
+    await refreshUnlockedSet();
     await refreshProjects();
 
     if (
@@ -371,6 +477,317 @@ async function selectCollection(id: CollectionId): Promise<void> {
   }
 }
 
+/**
+ * Cross-collection / cross-project request navigation — used by the
+ * command palette where the selected request might live anywhere.
+ *
+ * Walks the chain top-down, only triggering the heavy cascades when the
+ * level actually changed (no point reloading collections if we're already
+ * on the right project).
+ */
+async function navigateToRequest(
+  projectId: ProjectId,
+  collectionId: CollectionId,
+  requestId: RequestId,
+): Promise<void> {
+  if (state.activeProjectId !== projectId) {
+    await selectProject(projectId);
+  }
+  if (state.activeCollectionId !== collectionId) {
+    await selectCollection(collectionId);
+  }
+  if (state.activeRequestId !== requestId) {
+    await selectRequest(requestId);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Toast (transient bottom-right notification)
+// ---------------------------------------------------------------------------
+
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let toastSeq = 0;
+
+function showToast(text: string, kind: "ok" | "err" = "ok"): void {
+  toastSeq += 1;
+  const seq = toastSeq;
+  state.toast = { text, kind, seq };
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    // Only clear if no newer toast has displaced us.
+    if (state.toast?.seq === seq) state.toast = null;
+  }, 2200);
+}
+
+function dismissToast(): void {
+  state.toast = null;
+}
+
+// ---------------------------------------------------------------------------
+// Copy as curl
+// ---------------------------------------------------------------------------
+
+function showOpLog(entry: OpLog): void {
+  state.opLog = entry;
+}
+
+function dismissOpLog(): void {
+  state.opLog = null;
+}
+
+// ---------------------------------------------------------------------------
+// OpenAPI import / export (Phase 7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the OpenAPI import for the active project. `filePath` comes from
+ * the native file picker (caller's job). On success, opens the OpLog
+ * panel + navigates to the new collection. On failure, surfaces a toast.
+ */
+async function importOpenapiForProject(
+  projectId: ProjectId,
+  filePath: string,
+): Promise<void> {
+  try {
+    const result = await ipc.importOpenapi(projectId, filePath);
+    // Refresh the caches the user is about to see.
+    await refreshProjects();
+    if (state.activeProjectId === projectId) {
+      await refreshCollections(projectId);
+      await refreshEnvs(projectId);
+    }
+    // Jump to the new collection — best UX, no "where did it go" moment.
+    await selectProject(projectId);
+    state.activeCollectionId = result.collectionId;
+    await loadRequestsForActive();
+    await loadActiveRequestBody();
+    persist();
+
+    const subtitleBits: string[] = [
+      `${result.requestCount} request${result.requestCount === 1 ? "" : "s"}`,
+    ];
+    if (result.environmentCount > 0) {
+      subtitleBits.push(
+        `${result.environmentCount} env${result.environmentCount === 1 ? "" : "s"}`,
+      );
+    }
+    if (result.warningCount > 0) {
+      subtitleBits.push(
+        `${result.warningCount} warning${result.warningCount === 1 ? "" : "s"}`,
+      );
+    }
+    showOpLog({
+      kind: "import",
+      title: `Imported "${result.collectionName}"`,
+      subtitle: subtitleBits.join(" · "),
+      rows: result.rows.map((r) => ({
+        name: r.name,
+        method: r.method,
+        path: r.path,
+      })),
+      warnings: result.warnings,
+      logText: result.logText,
+      logFilename: result.logFilename,
+    });
+  } catch (e) {
+    showToast(
+      `Import failed: ${e instanceof Error ? e.message : String(e)}`,
+      "err",
+    );
+  }
+}
+
+/**
+ * Run the OpenAPI export for a collection — interactive flow.
+ *
+ * Sequence: build YAML (which gives us the suggested
+ * `{project}_{collection}.yaml` filename) → native save dialog defaulted
+ * to that name → write the file → pop the OpLog panel. Cancelling the
+ * dialog is a no-op (no toast, no log).
+ *
+ * Building before opening the dialog is what lets the suggested filename
+ * include the project name — the frontend doesn't always have project
+ * context for an arbitrary collection (e.g. when called from the palette
+ * with whatever is active), and the backend already knows the full
+ * project → collection chain.
+ */
+async function exportCollectionInteractive(collectionId: CollectionId): Promise<void> {
+  let result: ExportResult;
+  try {
+    result = await ipc.exportCollectionOpenapi(collectionId);
+  } catch (e) {
+    // ExportError::Collision is the most useful case to surface verbatim —
+    // the message includes the colliding path + method.
+    showToast(
+      `Export failed: ${e instanceof Error ? e.message : String(e)}`,
+      "err",
+    );
+    return;
+  }
+
+  const yamlSavePath = await save({
+    title: "Export collection as OpenAPI",
+    defaultPath: result.yamlFilename,
+    filters: [{ name: "OpenAPI YAML", extensions: ["yaml", "yml"] }],
+  });
+  if (!yamlSavePath) return; // user cancelled
+
+  try {
+    await ipc.saveTextFile(yamlSavePath, result.yaml);
+  } catch (e) {
+    showToast(
+      `Couldn't write YAML: ${e instanceof Error ? e.message : String(e)}`,
+      "err",
+    );
+    return;
+  }
+
+  const subtitleBits: string[] = [
+    `${result.requestCount} request${result.requestCount === 1 ? "" : "s"}`,
+  ];
+  if (result.redactionCount > 0) {
+    subtitleBits.push(
+      `${result.redactionCount} secret${result.redactionCount === 1 ? "" : "s"} stripped`,
+    );
+  }
+  if (result.warningCount > 0) {
+    subtitleBits.push(
+      `${result.warningCount} warning${result.warningCount === 1 ? "" : "s"}`,
+    );
+  }
+  showOpLog({
+    kind: "export",
+    title: `Exported to ${yamlSavePath.split("/").pop() ?? yamlSavePath}`,
+    subtitle: subtitleBits.join(" · "),
+    rows: result.rows.map((r) => ({
+      name: r.name,
+      method: r.method,
+      path: r.path,
+      redactions: r.redactions,
+    })),
+    warnings: result.warnings,
+    logText: result.logText,
+    logFilename: result.logFilename,
+  });
+}
+
+/**
+ * Build a code snippet for the request (with the currently-active env's
+ * resolution + decryption) and write it to the clipboard. EnvLocked
+ * propagates to the unlock modal with a retry that re-runs this op.
+ */
+async function copyRequestAsSnippet(
+  requestId: RequestId,
+  format: SnippetFormat,
+): Promise<void> {
+  // Flush any pending request edits so the snippet reflects what's on screen.
+  await flushSave();
+  try {
+    const snippet = await ipc.buildRequestSnippet(
+      requestId,
+      state.activeEnvId,
+      format,
+    );
+    await navigator.clipboard.writeText(snippet);
+    showToast(`Copied ${snippetFormatLabel(format)} to clipboard`);
+  } catch (e) {
+    const lockedEnv = envIdFromLockedError(e);
+    if (lockedEnv) {
+      state.unlockPrompt = {
+        envId: lockedEnv,
+        retry: () => copyRequestAsSnippet(requestId, format),
+      };
+      return;
+    }
+    showToast(
+      `Couldn't copy snippet: ${e instanceof Error ? e.message : String(e)}`,
+      "err",
+    );
+  }
+}
+
+/** Display name for each format — used in toasts + menu labels. */
+export function snippetFormatLabel(f: SnippetFormat): string {
+  switch (f) {
+    case "curl":
+      return "curl";
+    case "pythonRequests":
+      return "Python (requests)";
+    case "httpie":
+      return "HTTPie";
+    case "javaScriptFetch":
+      return "JavaScript (fetch)";
+    case "powerShell":
+      return "PowerShell";
+  }
+}
+
+/** All formats in a stable display order, for menus / palette. */
+export const SNIPPET_FORMATS: readonly SnippetFormat[] = [
+  "curl",
+  "pythonRequests",
+  "httpie",
+  "javaScriptFetch",
+  "powerShell",
+];
+
+function openPalette(): void {
+  state.commandPaletteOpen = true;
+}
+
+function closePalette(): void {
+  state.commandPaletteOpen = false;
+}
+
+function openEnvManage(): void {
+  state.envManageOpen = true;
+}
+
+function closeEnvManage(): void {
+  state.envManageOpen = false;
+}
+
+function openEnvPasswordSetup(id: EnvironmentId): void {
+  state.envPasswordSetupId = id;
+}
+
+function closeEnvPasswordSetup(): void {
+  state.envPasswordSetupId = null;
+}
+
+/**
+ * Interactive "disable encryption" flow — same UX whether triggered from
+ * EnvManageModal or the command palette. Prompts for the current master
+ * password, then asks the backend to decrypt every variable + override
+ * row in one transaction.
+ */
+async function disableEncryptionWithPrompt(
+  envId: EnvironmentId,
+  envName: string,
+): Promise<void> {
+  const password = await dialogs.prompt({
+    title: `Disable encryption for "${envName}"?`,
+    message:
+      "Enter the current master password. Every variable + override will be decrypted and stored as plaintext.",
+    placeholder: "current master password",
+    confirmLabel: "Decrypt environment",
+    kind: "password",
+  });
+  if (!password) return;
+  try {
+    await disableEnvEncryption(envId, password);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await dialogs.confirm({
+      title: "Couldn't disable encryption",
+      message: msg.includes("wrong password")
+        ? "That password didn't match. Try again from the menu."
+        : msg,
+      confirmLabel: "OK",
+    });
+  }
+}
+
 async function selectRequest(id: RequestId): Promise<void> {
   if (state.activeRequestId === id) return;
   // Flush pending edits to the *previous* request before switching. Same
@@ -419,8 +836,18 @@ async function executeActive(): Promise<void> {
       state.activeEnvId,
     );
   } catch (e) {
-    state.executionError = e instanceof Error ? e.message : String(e);
-    state.currentResponse = null;
+    const lockedEnv = envIdFromLockedError(e);
+    if (lockedEnv) {
+      // Pop the unlock modal; on success it will retry execute via the
+      // `retry` callback wired here.
+      state.unlockPrompt = {
+        envId: lockedEnv,
+        retry: () => executeActive(),
+      };
+    } else {
+      state.executionError = e instanceof Error ? e.message : String(e);
+      state.currentResponse = null;
+    }
   } finally {
     state.executing = false;
   }
@@ -517,6 +944,86 @@ async function deleteEnvVariable(envId: EnvironmentId, name: string): Promise<vo
   } catch (e) {
     setError(e);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Encryption: enable / disable / unlock / lock
+// ---------------------------------------------------------------------------
+
+/**
+ * Seal an env with a master password. On success the env's session key is
+ * loaded so the user can keep editing without re-typing. Throws on conflict
+ * (already encrypted), empty password, or — when `bypassPolicy=false` — a
+ * password below the zxcvbn floor.
+ */
+async function enableEnvEncryption(
+  envId: EnvironmentId,
+  password: string,
+  bypassPolicy = false,
+): Promise<void> {
+  await ipc.enableEnvEncryption(envId, password, bypassPolicy);
+  state.unlockedEnvIds = new Set([...state.unlockedEnvIds, envId as unknown as string]);
+  if (state.activeProjectId) await refreshEnvs(state.activeProjectId);
+  await refreshEnvVars(envId);
+  if (state.activeEnvId === envId) await refreshActiveOverride();
+}
+
+/** Verify password, decrypt everything, flip env back to plaintext. */
+async function disableEnvEncryption(
+  envId: EnvironmentId,
+  password: string,
+): Promise<void> {
+  await ipc.disableEnvEncryption(envId, password);
+  const next = new Set(state.unlockedEnvIds);
+  next.delete(envId as unknown as string);
+  state.unlockedEnvIds = next;
+  if (state.activeProjectId) await refreshEnvs(state.activeProjectId);
+  await refreshEnvVars(envId);
+  if (state.activeEnvId === envId) await refreshActiveOverride();
+}
+
+/** Derive + load the session key. Throws on wrong password. */
+async function unlockEnv(envId: EnvironmentId, password: string): Promise<void> {
+  await ipc.unlockEnv(envId, password);
+  state.unlockedEnvIds = new Set([...state.unlockedEnvIds, envId as unknown as string]);
+  // Refresh anything that was previously blocked.
+  await refreshEnvVars(envId);
+  if (state.activeEnvId === envId) await refreshActiveOverride();
+}
+
+async function lockEnv(envId: EnvironmentId): Promise<void> {
+  try {
+    await ipc.lockEnv(envId);
+  } catch (e) {
+    setError(e);
+    return;
+  }
+  const next = new Set(state.unlockedEnvIds);
+  next.delete(envId as unknown as string);
+  state.unlockedEnvIds = next;
+  // Re-fetch — variables/override will now show as locked.
+  await refreshEnvVars(envId);
+  if (state.activeEnvId === envId) await refreshActiveOverride();
+}
+
+/** Check whether an env is currently sealed AND not unlocked in this session. */
+function isEnvLocked(envId: EnvironmentId | null | undefined): boolean {
+  if (!envId) return false;
+  const env = state.envs.find((e) => e.id === envId);
+  if (!env || !env.isEncrypted) return false;
+  return !state.unlockedEnvIds.has(envId as unknown as string);
+}
+
+/** Request the unlock modal for this env. Optional retry runs after success. */
+function promptUnlock(
+  envId: EnvironmentId,
+  retry?: () => void | Promise<void>,
+): void {
+  state.unlockPrompt = { envId, retry };
+}
+
+function dismissUnlockPrompt(): void {
+  state.unlockPrompt = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -795,4 +1302,54 @@ export const app = {
   updateActiveOverride,
   resetActiveOverride,
   flushOverride,
+  // Crypto / encrypted envs (Phase 6)
+  get unlockedEnvIds() {
+    return state.unlockedEnvIds;
+  },
+  get unlockPrompt() {
+    return state.unlockPrompt;
+  },
+  isEnvLocked,
+  enableEnvEncryption,
+  disableEnvEncryption,
+  unlockEnv,
+  lockEnv,
+  promptUnlock,
+  dismissUnlockPrompt,
+  // Command palette (Phase 8)
+  get commandPaletteOpen() {
+    return state.commandPaletteOpen;
+  },
+  openPalette,
+  closePalette,
+  navigateToRequest,
+  // Toast (transient feedback)
+  get toast() {
+    return state.toast;
+  },
+  showToast,
+  dismissToast,
+  // OpLog (persistent feedback, used by OpenAPI flows)
+  get opLog() {
+    return state.opLog;
+  },
+  dismissOpLog,
+  // Copy as snippet (curl / python / httpie / javascript / powershell)
+  copyRequestAsSnippet,
+  // OpenAPI (Phase 7)
+  importOpenapiForProject,
+  exportCollectionInteractive,
+  // Env manage / password modals (lifted to global state so the palette
+  // can open them without prop-drilling through DetailPanel)
+  get envManageOpen() {
+    return state.envManageOpen;
+  },
+  get envPasswordSetupId() {
+    return state.envPasswordSetupId;
+  },
+  openEnvManage,
+  closeEnvManage,
+  openEnvPasswordSetup,
+  closeEnvPasswordSetup,
+  disableEncryptionWithPrompt,
 };

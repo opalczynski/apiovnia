@@ -18,11 +18,15 @@ import type {
   EnvOverride,
   EnvVariable,
   ExecutionResult,
+  ExportResult,
+  ImportResult,
+  PasswordStrength,
   Project,
   ProjectId,
   Request,
   RequestId,
   RequestSummary,
+  SnippetFormat,
 } from "$lib/types/domain";
 
 // ---------- Health ----------
@@ -145,3 +149,85 @@ export const getLastResponse = (
   requestId: RequestId,
 ): Promise<ExecutionResult | null> =>
   invoke("get_last_response", { requestId });
+
+/**
+ * Build a paste-ready code snippet (curl / Python requests / HTTPie /
+ * JS fetch / PowerShell) for the resolved request. Same resolution +
+ * decryption path as `executeRequest`. Returns a string ready for the
+ * clipboard.
+ *
+ * Throws `ENV_LOCKED:{envId}` if the active env is locked.
+ */
+export const buildRequestSnippet = (
+  requestId: RequestId,
+  envId: EnvironmentId | null,
+  format: SnippetFormat,
+): Promise<string> =>
+  invoke("build_request_snippet", { requestId, envId, format });
+
+// ---------- Crypto / encrypted envs (Phase 6) ----------
+
+/**
+ * Seal a plaintext env behind a master password. Encrypts every existing
+ * variable value + override field in a single transaction and loads the
+ * derived session key. The frontend never sees the key.
+ *
+ * `bypassPolicy` lets pro users override the zxcvbn/length floor — the
+ * backend still rejects empty strings.
+ */
+export const enableEnvEncryption = (
+  envId: EnvironmentId,
+  password: string,
+  bypassPolicy = false,
+): Promise<void> =>
+  invoke("enable_env_encryption", { envId, password, bypassPolicy });
+
+/** Inverse of `enableEnvEncryption` — verifies the password, decrypts back to plaintext. */
+export const disableEnvEncryption = (
+  envId: EnvironmentId,
+  password: string,
+): Promise<void> => invoke("disable_env_encryption", { envId, password });
+
+/** Derive + verify the env's master key, load it into the session store. */
+export const unlockEnv = (
+  envId: EnvironmentId,
+  password: string,
+): Promise<void> => invoke("unlock_env", { envId, password });
+
+/** Drop the session key. Idempotent. */
+export const lockEnv = (envId: EnvironmentId): Promise<void> =>
+  invoke("lock_env", { envId });
+
+export const isEnvUnlocked = (envId: EnvironmentId): Promise<boolean> =>
+  invoke("is_env_unlocked", { envId });
+
+export const listUnlockedEnvs = (): Promise<EnvironmentId[]> =>
+  invoke("list_unlocked_envs");
+
+/**
+ * Live password strength scoring (zxcvbn). Cheap — debounce ~120 ms in the
+ * UI to avoid IPC churn but otherwise call freely. Stateless on the Rust
+ * side: no password is logged or stored.
+ */
+export const scorePassword = (password: string): Promise<PasswordStrength> =>
+  invoke("score_password", { password });
+
+// ---------- OpenAPI import / export (Phase 7) ----------
+
+/** Parse an OpenAPI 3.x YAML/JSON file and persist a new collection. */
+export const importOpenapi = (
+  projectId: ProjectId,
+  filePath: string,
+): Promise<ImportResult> =>
+  invoke("import_openapi", { projectId, filePath });
+
+/** Build the OpenAPI YAML for a collection (secrets pre-stripped). */
+export const exportCollectionOpenapi = (
+  collectionId: CollectionId,
+): Promise<ExportResult> =>
+  invoke("export_collection_openapi", { collectionId });
+
+/** Generic "save this text to disk" — used by OpLog "Download log" + the
+ *  YAML save itself (frontend picks the path via tauri-plugin-dialog). */
+export const saveTextFile = (path: string, contents: string): Promise<void> =>
+  invoke("save_text_file", { path, contents });

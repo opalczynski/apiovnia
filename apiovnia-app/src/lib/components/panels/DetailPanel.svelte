@@ -18,7 +18,6 @@
   import AuthTab from "$lib/components/request/tabs/AuthTab.svelte";
   import EnvOverridesTab from "$lib/components/request/tabs/EnvOverridesTab.svelte";
   import ResponseViewer from "$lib/components/response/ResponseViewer.svelte";
-  import EnvManageModal from "$lib/components/modals/EnvManageModal.svelte";
   import { panels } from "$lib/stores/panels.svelte";
   import { app } from "$lib/stores/app.svelte";
   import { dialogs } from "$lib/stores/dialogs.svelte";
@@ -26,7 +25,6 @@
 
   type TabId = "params" | "headers" | "body" | "auth" | "env" | "tests";
   let activeTab = $state<TabId>("body");
-  let envManageOpen = $state(false);
 
   // Mirror panel CTAs — same prompt flows the left/middle panels use, kept
   // here so the user can create directly from the right pane without
@@ -214,7 +212,7 @@
     {/if}
   {:else}
     {@const r = app.activeRequest}
-    <UrlBar request={r} onPatch={patch} onManageEnvs={() => (envManageOpen = true)} />
+    <UrlBar request={r} onPatch={patch} onManageEnvs={() => app.openEnvManage()} />
 
     <Tabs value={activeTab} tabs={tabSpecs} onChange={(v) => (activeTab = v)}>
       <div class="tab-area" style="flex: {panels.requestSplit};">
@@ -227,7 +225,7 @@
         {:else if activeTab === "auth"}
           <AuthTab request={r} onPatch={patch} />
         {:else if activeTab === "env"}
-          <EnvOverridesTab request={r} onManageEnvs={() => (envManageOpen = true)} />
+          <EnvOverridesTab request={r} onManageEnvs={() => app.openEnvManage()} />
         {/if}
       </div>
     </Tabs>
@@ -254,8 +252,6 @@
     </footer>
   {/if}
 </div>
-
-<EnvManageModal open={envManageOpen} onClose={() => (envManageOpen = false)} />
 
 <style>
   .detail {

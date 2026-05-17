@@ -5,7 +5,7 @@
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import type { MenuItem } from "$lib/components/ContextMenu.svelte";
   import Popover from "$lib/components/ui/Popover.svelte";
-  import { app } from "$lib/stores/app.svelte";
+  import { app, SNIPPET_FORMATS, snippetFormatLabel } from "$lib/stores/app.svelte";
   import { dialogs } from "$lib/stores/dialogs.svelte";
   import type { HttpMethod, RequestSummary } from "$lib/types/domain";
 
@@ -98,6 +98,14 @@
   function requestMenu(r: RequestSummary): MenuItem[] {
     return [
       { label: "Rename", icon: "pencil", onClick: () => renameRequest(r) },
+      {
+        label: "Copy as…",
+        icon: "copy",
+        children: SNIPPET_FORMATS.map((f) => ({
+          label: snippetFormatLabel(f),
+          onClick: () => app.copyRequestAsSnippet(r.id, f),
+        })),
+      },
       {
         label: "Delete request",
         icon: "trash",

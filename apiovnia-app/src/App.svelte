@@ -7,10 +7,18 @@
   import RequestsPanel from "$lib/components/panels/RequestsPanel.svelte";
   import DetailPanel from "$lib/components/panels/DetailPanel.svelte";
   import DialogsHost from "$lib/components/modals/DialogsHost.svelte";
+  import UnlockEnvModal from "$lib/components/modals/UnlockEnvModal.svelte";
+  import CommandPalette from "$lib/components/modals/CommandPalette.svelte";
+  import EnvManageModal from "$lib/components/modals/EnvManageModal.svelte";
+  import SetEnvPasswordModal from "$lib/components/modals/SetEnvPasswordModal.svelte";
+  import ToastHost from "$lib/components/ToastHost.svelte";
+  import OpLogHost from "$lib/components/OpLogHost.svelte";
   import { app } from "$lib/stores/app.svelte";
+  import { installKeymap } from "$lib/keymap";
 
   onMount(() => {
     void app.loadAll();
+    return installKeymap();
   });
 
   // Breadcrumb mirrors the active selection. Falls back to a single segment
@@ -42,6 +50,29 @@
   </ThreePanelLayout>
 
   <DialogsHost />
+
+  {#if app.unlockPrompt}
+    {@const prompt = app.unlockPrompt}
+    <UnlockEnvModal
+      envId={prompt.envId}
+      retry={prompt.retry}
+      onClose={() => app.dismissUnlockPrompt()}
+    />
+  {/if}
+
+  {#if app.commandPaletteOpen}
+    <CommandPalette onClose={() => app.closePalette()} />
+  {/if}
+
+  <EnvManageModal open={app.envManageOpen} onClose={() => app.closeEnvManage()} />
+
+  {#if app.envPasswordSetupId}
+    {@const id = app.envPasswordSetupId}
+    <SetEnvPasswordModal envId={id} onClose={() => app.closeEnvPasswordSetup()} />
+  {/if}
+
+  <ToastHost />
+  <OpLogHost />
 </div>
 
 <style>

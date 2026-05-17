@@ -11,8 +11,13 @@ pub mod repos;
 pub use db::Db;
 pub use error::{Result, StorageError};
 pub use repos::{
-    collections::CollectionRepo, env_variables::EnvVariableRepo, environments::EnvironmentRepo,
-    history::HistoryRepo, overrides::OverrideRepo, projects::ProjectRepo, requests::RequestRepo,
+    collections::CollectionRepo,
+    env_variables::EnvVariableRepo,
+    environments::{EncryptionMeta, EnvironmentRepo},
+    history::HistoryRepo,
+    overrides::{OverrideRepo, RawOverrideCols, RawOverrideRow},
+    projects::ProjectRepo,
+    requests::RequestRepo,
 };
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -10,8 +10,10 @@ pub mod ids;
 pub mod interpolate;
 pub mod model;
 pub mod resolver;
+pub mod snippets;
 pub mod time;
 
+pub use snippets::{to_curl, SnippetFormat};
 pub use ids::{CollectionId, EnvironmentId, ProjectId, RequestId};
 pub use model::{
     AuthConfig, BodyType, Collection, Environment, EnvOverride, EnvVariable, HttpMethod, KeyValue,

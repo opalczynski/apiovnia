@@ -1,7 +1,10 @@
 //! Environment CRUD — `environments` table.
 //!
-//! Phase 5: plain rows (no encryption). Phase 6 will fill `salt` /
-//! `password_check` when the user seals an env behind a master password.
+//! Phase 5: plain rows (no encryption).
+//! Phase 6: `salt` and `password_check` get filled in when the user seals
+//! the env behind a master password; the repo exposes these only as opaque
+//! byte blobs — the crypto math lives in `apiovnia-crypto` and the encrypt/
+//! decrypt bookkeeping in the Tauri command layer.
 
 use apiovnia_core::{
     ids::{EnvironmentId, ProjectId},
@@ -13,6 +16,15 @@ use sqlx::SqlitePool;
 use crate::error::{Result, StorageError};
 
 pub struct EnvironmentRepo;
+
+/// The cryptographic metadata persisted with an encrypted env. `salt` is the
+/// Argon2id salt; `password_check` is the AES-256-GCM ciphertext of a fixed
+/// marker, used to verify the master password without storing it.
+#[derive(Debug, Clone)]
+pub struct EncryptionMeta {
+    pub salt: Vec<u8>,
+    pub password_check: Vec<u8>,
+}
 
 impl EnvironmentRepo {
     pub async fn list_for_project(
@@ -92,6 +104,73 @@ impl EnvironmentRepo {
             .bind(id.as_str())
             .execute(pool)
             .await?;
+        if res.rows_affected() == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
+
+    /// Returns the stored crypto metadata when the env has been sealed, or
+    /// `None` if it is still in plaintext mode.
+    pub async fn encryption_meta(
+        pool: &SqlitePool,
+        id: &EnvironmentId,
+    ) -> Result<Option<EncryptionMeta>> {
+        let row = sqlx::query_as::<_, (Option<Vec<u8>>, Option<Vec<u8>>)>(
+            "SELECT salt, password_check FROM environments WHERE id = ?",
+        )
+        .bind(id.as_str())
+        .fetch_optional(pool)
+        .await?
+        .ok_or(StorageError::NotFound)?;
+        Ok(match row {
+            (Some(salt), Some(check)) => Some(EncryptionMeta {
+                salt,
+                password_check: check,
+            }),
+            _ => None,
+        })
+    }
+
+    /// Tx-aware version of [`Self::set_encryption`]. Use when the env flip
+    /// must be atomic with bulk variable/override rewrites — otherwise the
+    /// open transaction holds `SQLite`'s writer lock and a second `pool` write
+    /// deadlocks with `database is locked`.
+    pub async fn set_encryption_in_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        id: &EnvironmentId,
+        meta: &EncryptionMeta,
+    ) -> Result<()> {
+        let res = sqlx::query(
+            "UPDATE environments \
+             SET is_encrypted = 1, requires_unlock = 1, salt = ?, password_check = ? \
+             WHERE id = ?",
+        )
+        .bind(&meta.salt)
+        .bind(&meta.password_check)
+        .bind(id.as_str())
+        .execute(&mut **tx)
+        .await?;
+        if res.rows_affected() == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
+
+    /// Tx-aware version of [`Self::clear_encryption`]. Same rationale as
+    /// [`Self::set_encryption_in_tx`].
+    pub async fn clear_encryption_in_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        id: &EnvironmentId,
+    ) -> Result<()> {
+        let res = sqlx::query(
+            "UPDATE environments \
+             SET is_encrypted = 0, requires_unlock = 0, salt = NULL, password_check = NULL \
+             WHERE id = ?",
+        )
+        .bind(id.as_str())
+        .execute(&mut **tx)
+        .await?;
         if res.rows_affected() == 0 {
             return Err(StorageError::NotFound);
         }

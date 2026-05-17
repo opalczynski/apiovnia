@@ -168,6 +168,86 @@ export type SentRequest = {
   bodySizeBytes: number;
 };
 
+// ---------------------------------------------------------------------------
+// Snippet formats — mirrors `apiovnia_core::SnippetFormat`. Drives the
+// "Copy as…" submenu in the request context menu + command palette.
+// ---------------------------------------------------------------------------
+
+export type SnippetFormat =
+  | "curl"
+  | "pythonRequests"
+  | "httpie"
+  | "javaScriptFetch"
+  | "powerShell";
+
+// ---------------------------------------------------------------------------
+// Password strength — mirrors `apiovnia_crypto::PasswordStrength`. Used by
+// the encrypted-env setup flow's live meter.
+// ---------------------------------------------------------------------------
+
+export type PasswordStrength = {
+  /** 0..=4, zxcvbn's score. */
+  score: number;
+  /** Localised label matching the score ("Very weak" → "Excellent"). */
+  label: string;
+  /**
+   * Human crack-time line: "less than a second", "3 days", "centuries".
+   * Modelled against a slow offline attacker (Argon2id-class).
+   */
+  crackTimeDisplay: string;
+  /** One-line description of the main weakness (low scores only). */
+  warning: string | null;
+  /** Up to ~3 suggestions; UI shows the first. */
+  suggestions: string[];
+  /** True when both the length floor and score threshold are cleared. */
+  meetsPolicy: boolean;
+  /** True iff input is at least `MIN_LENGTH` characters. */
+  longEnough: boolean;
+};
+
+// ---------------------------------------------------------------------------
+// OpenAPI import / export — mirrors the IPC DTOs in commands/openapi.rs.
+// ---------------------------------------------------------------------------
+
+export type ImportRow = {
+  name: string;
+  method: string;
+  path: string;
+};
+
+export type ImportResult = {
+  collectionId: CollectionId;
+  collectionName: string;
+  requestCount: number;
+  environmentCount: number;
+  warningCount: number;
+  rows: ImportRow[];
+  warnings: string[];
+  logText: string;
+  logFilename: string;
+};
+
+export type ExportRow = {
+  name: string;
+  method: string;
+  path: string;
+  /** Number of secrets stripped from this request before export. */
+  redactions: number;
+};
+
+export type ExportResult = {
+  /** The OpenAPI 3.0.3 document, ready to write to disk. */
+  yaml: string;
+  yamlFilename: string;
+  requestCount: number;
+  redactionCount: number;
+  warningCount: number;
+  rows: ExportRow[];
+  warnings: string[];
+  logText: string;
+  logFilename: string;
+};
+
 export type ExecutionResult = {
   status: number;
   statusText: string;

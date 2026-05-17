@@ -97,6 +97,35 @@ impl RequestRepo {
         Ok(req)
     }
 
+    /// Insert a fully-formed request (id, fields, timestamps all caller-
+    /// supplied). Used by `OpenAPI` import which already knows the complete
+    /// shape and doesn't want to round-trip through `create_blank` +
+    /// `update_full`.
+    pub async fn insert_full(pool: &SqlitePool, req: &Request) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO requests (id, collection_id, name, method, url, headers_json, \
+                                   params_json, body_type, body_content, auth_json, \
+                                   sort_order, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(req.id.as_str())
+        .bind(req.collection_id.as_str())
+        .bind(&req.name)
+        .bind(req.method.as_str())
+        .bind(&req.url)
+        .bind(serde_json::to_string(&req.headers)?)
+        .bind(serde_json::to_string(&req.params)?)
+        .bind(body_type_str(req.body_type))
+        .bind(&req.body_content)
+        .bind(serde_json::to_string(&req.auth)?)
+        .bind(req.sort_order)
+        .bind(req.created_at)
+        .bind(req.updated_at)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn rename(pool: &SqlitePool, id: &RequestId, name: &str) -> Result<Request> {
         let name = name.trim();
         if name.is_empty() {
