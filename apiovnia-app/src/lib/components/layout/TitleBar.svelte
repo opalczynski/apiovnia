@@ -60,9 +60,6 @@
       <span>Search</span>
       <span class="ap-kbd">⌘P</span>
     </button>
-    <button class="ap-btn ghost icon sm" title="Settings">
-      <Icon d={IC.settings} />
-    </button>
   </div>
 </header>
 

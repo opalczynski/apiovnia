@@ -420,7 +420,7 @@
     top: -3px;
     right: -3px;
     background: var(--accent);
-    color: #1a1102;
+    color: var(--on-accent);
     font-size: 9px;
     font-weight: 700;
     line-height: 1;
@@ -485,7 +485,7 @@
   .method-row.checked .check {
     background: var(--accent);
     border-color: var(--accent);
-    color: #1a1102;
+    color: var(--on-accent);
   }
 
   .empty {

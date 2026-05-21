@@ -8,6 +8,7 @@
   import type { MenuItem } from "$lib/components/ContextMenu.svelte";
   import { app } from "$lib/stores/app.svelte";
   import { dialogs } from "$lib/stores/dialogs.svelte";
+  import { settings } from "$lib/stores/settings.svelte";
   import type {
     Collection,
     CollectionId,
@@ -378,6 +379,15 @@
       <div class="who-name">Apiovnia</div>
       <div class="who-sub">Local · SQLite</div>
     </div>
+    <button
+      class="ap-btn icon sm ghost"
+      class:active={settings.open}
+      title="Settings (⌘,)"
+      aria-label="Open settings"
+      onclick={() => (settings.open = true)}
+    >
+      <Icon d={IC.settings} />
+    </button>
     <button
       class="ap-btn icon sm ghost"
       class:active={app.historyPanelOpen}

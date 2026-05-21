@@ -92,6 +92,9 @@
   --accent-dim: #b47208;
   --accent-bg: rgba(245, 158, 11, 0.1);
   --accent-bd: rgba(245, 158, 11, 0.3);
+  /* Text/glyph colour for filled-accent surfaces (CTA buttons, active marks).
+     Themed so a blue/pink/light accent gets a legible foreground. */
+  --on-accent: #1a1102;
 
   --m-get: #4ade80;
   --m-post: #fbbf24;
@@ -111,6 +114,9 @@
   --j-null: #c58fe6;
   --j-punct: #6e6e76;
 
+  --scrollbar: #26262b;
+  --scrollbar-hover: #34343a;
+
   --r-badge: 4px;
   --r-ctrl: 6px;
   --r-panel: 8px;
@@ -124,6 +130,216 @@
   --row-h-lg: 30px;
 
   color-scheme: dark;
+}
+
+/* ================================================================
+   Theme bundles (Phase 11)
+   ---------------------------------------------------------------
+   A theme is just a CSS-variable override. The settings store sets
+   `<html data-theme="...">`; the default `apiovnia` theme lives on
+   `:root` above, so these only need to redefine the ~35 tokens.
+   Components read `var(--token)` directly, so nothing else changes.
+   Keep the token list in 1:1 sync with `:root` — a missing token
+   silently falls back to the amber default.
+   ================================================================ */
+
+/* Atomic Dark — near-monochrome, neutral accent, zero colour noise.
+   Method + JSON colours are kept (they carry meaning) but desaturated. */
+:root[data-theme="atomic-dark"] {
+  --bg: #0c0c0c;
+  --surface: #121212;
+  --surface-2: #181818;
+  --elevated: #1e1e1e;
+  --hover: #232323;
+  --selected: #2b2b2b;
+
+  --border: #222222;
+  --border-strong: #353535;
+  --border-soft: #191919;
+
+  --fg: #e9e9e9;
+  --fg-dim: #bdbdbd;
+  --fg-muted: #8c8c8c;
+  --fg-faint: #616161;
+
+  --accent: #d4d4d4;
+  --accent-hi: #f0f0f0;
+  --accent-dim: #9a9a9a;
+  --accent-bg: rgba(212, 212, 212, 0.1);
+  --accent-bd: rgba(212, 212, 212, 0.28);
+  --on-accent: #0c0c0c;
+
+  --m-get: #8fb89a;
+  --m-post: #c3b58a;
+  --m-put: #8fa6c3;
+  --m-patch: #a89cc0;
+  --m-delete: #c98f8f;
+  --m-other: #8c8c8c;
+
+  --ok: #8fb89a;
+  --warn: #c3b58a;
+  --err: #c98f8f;
+
+  --j-key: #e0e0e0;
+  --j-string: #a9c4ad;
+  --j-number: #c9bd95;
+  --j-bool: #9fb0c3;
+  --j-null: #b3a6c4;
+  --j-punct: #5a5a5a;
+
+  --scrollbar: #2b2b2b;
+  --scrollbar-hover: #3c3c3c;
+
+  color-scheme: dark;
+}
+
+/* Tokyo Night — deep navy, blue-violet accent (enkia palette). */
+:root[data-theme="tokyo-night"] {
+  --bg: #16161e;
+  --surface: #1a1b26;
+  --surface-2: #1f2335;
+  --elevated: #24283b;
+  --hover: #292e42;
+  --selected: #2f344d;
+
+  --border: #2a2e3f;
+  --border-strong: #3b4261;
+  --border-soft: #1e2030;
+
+  --fg: #c0caf5;
+  --fg-dim: #a9b1d6;
+  --fg-muted: #828bb8;
+  --fg-faint: #565f89;
+
+  --accent: #7aa2f7;
+  --accent-hi: #9eb8ff;
+  --accent-dim: #5d7fc4;
+  --accent-bg: rgba(122, 162, 247, 0.12);
+  --accent-bd: rgba(122, 162, 247, 0.34);
+  --on-accent: #16161e;
+
+  --m-get: #9ece6a;
+  --m-post: #e0af68;
+  --m-put: #7dcfff;
+  --m-patch: #bb9af7;
+  --m-delete: #f7768e;
+  --m-other: #828bb8;
+
+  --ok: #9ece6a;
+  --warn: #e0af68;
+  --err: #f7768e;
+
+  --j-key: #7dcfff;
+  --j-string: #9ece6a;
+  --j-number: #ff9e64;
+  --j-bool: #bb9af7;
+  --j-null: #f7768e;
+  --j-punct: #565f89;
+
+  --scrollbar: #2f344d;
+  --scrollbar-hover: #3b4261;
+
+  color-scheme: dark;
+}
+
+/* Monokai — warm charcoal, signature pink accent (Sublime palette). */
+:root[data-theme="monokai"] {
+  --bg: #1d1e19;
+  --surface: #272822;
+  --surface-2: #2d2e27;
+  --elevated: #34352c;
+  --hover: #3e3d32;
+  --selected: #49483e;
+
+  --border: #3a3b32;
+  --border-strong: #4c4d40;
+  --border-soft: #2b2c25;
+
+  --fg: #f8f8f2;
+  --fg-dim: #cfd0c2;
+  --fg-muted: #a6a28c;
+  --fg-faint: #75715e;
+
+  --accent: #f92672;
+  --accent-hi: #ff5b97;
+  --accent-dim: #c41e5a;
+  --accent-bg: rgba(249, 38, 114, 0.12);
+  --accent-bd: rgba(249, 38, 114, 0.34);
+  --on-accent: #1d1e19;
+
+  --m-get: #a6e22e;
+  --m-post: #e6db74;
+  --m-put: #66d9ef;
+  --m-patch: #ae81ff;
+  --m-delete: #f92672;
+  --m-other: #a6a28c;
+
+  --ok: #a6e22e;
+  --warn: #e6db74;
+  --err: #f92672;
+
+  --j-key: #66d9ef;
+  --j-string: #e6db74;
+  --j-number: #ae81ff;
+  --j-bool: #fd971f;
+  --j-null: #f92672;
+  --j-punct: #75715e;
+
+  --scrollbar: #49483e;
+  --scrollbar-hover: #5c5b4d;
+
+  color-scheme: dark;
+}
+
+/* Light — white base, dark ink. The only non-dark theme; accent darkened
+   to a readable gold and method/JSON colours pushed darker for contrast
+   against the near-white surfaces. */
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --surface-2: #f0f0f2;
+  --elevated: #ffffff;
+  --hover: #ececef;
+  --selected: #e4e4ea;
+
+  --border: #e3e3e7;
+  --border-strong: #cdcdd4;
+  --border-soft: #ededf0;
+
+  --fg: #1a1a1f;
+  --fg-dim: #3c3c44;
+  --fg-muted: #6b6b76;
+  --fg-faint: #9a9aa3;
+
+  --accent: #b06f00;
+  --accent-hi: #d4880a;
+  --accent-dim: #855300;
+  --accent-bg: rgba(176, 111, 0, 0.12);
+  --accent-bd: rgba(176, 111, 0, 0.4);
+  --on-accent: #ffffff;
+
+  --m-get: #1f8a3f;
+  --m-post: #9a6a00;
+  --m-put: #1d6fd4;
+  --m-patch: #7c3aed;
+  --m-delete: #d33b3b;
+  --m-other: #5b6470;
+
+  --ok: #1f8a3f;
+  --warn: #9a6a00;
+  --err: #d33b3b;
+
+  --j-key: #1a1a1f;
+  --j-string: #1f7a3a;
+  --j-number: #9a5a00;
+  --j-bool: #1d6fd4;
+  --j-null: #7c3aed;
+  --j-punct: #9a9aa3;
+
+  --scrollbar: #d3d3d9;
+  --scrollbar-hover: #bbbbc4;
+
+  color-scheme: light;
 }
 
 /* Reset basics */
@@ -203,16 +419,16 @@ body {
   color: var(--fg);
 }
 .ap-btn.cta {
-  background: linear-gradient(180deg, #f5a623 0%, #e08f0b 100%);
-  border-color: #c57e07;
-  color: #1a1102;
+  background: linear-gradient(180deg, var(--accent-hi) 0%, var(--accent) 100%);
+  border-color: var(--accent-dim);
+  color: var(--on-accent);
   font-weight: 600;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.2),
     0 1px 0 rgba(255, 255, 255, 0.18) inset;
 }
 .ap-btn.cta:hover {
-  background: linear-gradient(180deg, #ffb13b 0%, #ed9a12 100%);
+  filter: brightness(1.08);
 }
 .ap-btn.sm {
   height: 22px;
@@ -537,11 +753,11 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #26262b;
+  background: var(--scrollbar);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #34343a;
+  background: var(--scrollbar-hover);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -577,13 +793,13 @@ body {
   position: relative;
 }
 .jv-line:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
 }
 .jv-line.match {
-  background: rgba(245, 158, 11, 0.06);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 .jv-line.match-active {
-  background: rgba(245, 158, 11, 0.18);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
   box-shadow: inset 2px 0 0 var(--accent);
 }
 .jv-no {
@@ -673,7 +889,7 @@ body {
 }
 .jv .match-active mark {
   background: var(--accent);
-  color: #1a1102;
+  color: var(--on-accent);
 }
 
 .j-key {

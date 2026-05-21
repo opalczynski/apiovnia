@@ -305,16 +305,16 @@
     margin-top: 8px;
     height: 32px;
     padding: 0 18px;
-    background: linear-gradient(180deg, #f5a623 0%, #e08f0b 100%);
-    border-color: #c57e07;
-    color: #1a1102;
+    background: linear-gradient(180deg, var(--accent-hi) 0%, var(--accent) 100%);
+    border-color: var(--accent-dim);
+    color: var(--on-accent);
     font-weight: 600;
     box-shadow:
       0 0 0 1px rgba(0, 0, 0, 0.2),
       0 1px 0 rgba(255, 255, 255, 0.18) inset;
   }
   .cta-btn:hover {
-    background: linear-gradient(180deg, #ffb13b 0%, #ed9a12 100%);
+    filter: brightness(1.08);
   }
 
   .tab-area {

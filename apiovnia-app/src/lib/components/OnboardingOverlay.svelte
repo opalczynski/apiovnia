@@ -144,8 +144,8 @@
     width: 28px;
     height: 28px;
     border-radius: 6px;
-    background: linear-gradient(135deg, #f59e0b, #b47208);
-    color: #1a1102;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    color: var(--on-accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -183,12 +183,12 @@
   }
   .ap-btn.cta.primary {
     background: var(--accent);
-    color: #1a1102;
+    color: var(--on-accent);
     border: 0;
     font-weight: 600;
   }
   .ap-btn.cta.primary:hover {
-    background: var(--accent-hover, #fbbf24);
+    background: var(--accent-hi);
   }
   .ap-btn.secondary {
     background: transparent;

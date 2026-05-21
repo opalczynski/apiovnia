@@ -27,6 +27,7 @@
   import * as ipc from "$lib/api/ipc";
   import { app, SNIPPET_FORMATS, snippetFormatLabel } from "$lib/stores/app.svelte";
   import { dialogs } from "$lib/stores/dialogs.svelte";
+  import { settings } from "$lib/stores/settings.svelte";
   import type {
     Collection,
     HttpMethod,
@@ -269,6 +270,19 @@
       },
     });
 
+    // Settings — opens the SettingsModal (theme, history, about).
+    out.push({
+      kind: "action",
+      key: "a:settings",
+      label: "Open settings",
+      hint: "theme, history, about",
+      icon: IC.settings,
+      run: () => {
+        settings.open = true;
+        finish();
+      },
+    });
+
     // OpenAPI import / export — gate on active project + collection.
     const activeProj = app.activeProject;
     if (activeProj) {
@@ -410,6 +424,23 @@
         if (name) await app.createEnv(name);
       },
     });
+
+    // Themes — one entry per theme, switch on select. Low-priority, so
+    // they sit at the very end of the list.
+    for (const t of settings.readonly.THEMES) {
+      const current = settings.theme === t.id;
+      out.push({
+        kind: "action",
+        key: `a:theme:${t.id}`,
+        label: `Theme: ${t.label}`,
+        hint: current ? "current theme" : "switch theme",
+        icon: IC.settings,
+        run: () => {
+          settings.theme = t.id;
+          finish();
+        },
+      });
+    }
     return out;
   }
 
@@ -629,7 +660,9 @@
     background: var(--surface);
     border: 1px solid var(--border-strong);
     border-radius: 12px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(245, 158, 11, 0.06);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.55),
+      0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
     display: flex;
     flex-direction: column;
     overflow: hidden;

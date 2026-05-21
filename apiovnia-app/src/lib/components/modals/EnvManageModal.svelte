@@ -688,10 +688,10 @@
     border-radius: 11px;
     background: linear-gradient(
       180deg,
-      rgba(245, 158, 11, 0.18),
-      rgba(245, 158, 11, 0.06)
+      color-mix(in srgb, var(--accent) 18%, transparent),
+      color-mix(in srgb, var(--accent) 6%, transparent)
     );
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    border: 1px solid var(--accent-bd);
     display: flex;
     align-items: center;
     justify-content: center;

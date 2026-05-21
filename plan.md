@@ -348,16 +348,22 @@ Konwencja:
 
 ---
 
-## Co NIE robimy w MVP (recap z briefu)
-- WebSocket / SSE / gRPC / GraphQL.
+## Zakres produktu — co poza nim (recap z briefu)
+
+Out of scope na stałe:
 - Pre-request scripts.
 - Test assertions.
 - Sync, sharing, team features.
 - Mobile.
 - Auto-updater.
 - Tree / Schema view dla response (tylko Pretty + Raw + Headers + Preview).
-- Drag-to-reorder requestów (sort by `sort_order` + `↑↓` w v2).
-- Light mode.
+- Drag-to-reorder requestów (sort by `sort_order` + `↑↓` później).
+
+Zrobione / przeniesione do roadmapy (już NIE out-of-scope):
+- ~~Light mode~~ → dostarczone w Fazie 11 (jako jeden z 5 motywów).
+- ~~WebSocket / SSE / gRPC / GraphQL~~ → przeniesione do roadmapy jako
+  Faza 13 (wsparcie wielu rodzajów API). Teoria była "tylko REST" — plany
+  produktu się zmieniły.
 
 ---
 
@@ -1499,20 +1505,104 @@ Drobne zmiany z user-testów po Phase 9, plus dodanie ikony aplikacji.
 
 ---
 
-## Fazy 9 (reszta) + 10-11 — PENDING
+## Faza 11 — Settings panel + motywy — DONE ✅ (częściowo) (2026-05-20)
+
+Pierwsza faza po wrapie funkcjonalnym: Settings przestaje być no-opową
+ikonką, dochodzi pełny system motywów. To NIE jest "domykanie MVP" —
+budujemy produkt, Settings i motywy to feature jak każdy inny.
+
+### Settings store (`lib/stores/settings.svelte.ts`)
+
+- Nowy store, kalka `panels.svelte.ts`: `$state` blob + plain
+  getters/setters + `persist()` do `localStorage["apiovnia.settings.v1"]`.
+- Pola persisted: `theme` (ThemeId), `historyLimit` (100/200/500/1000).
+- Osobny transient `$state` `{ open }` na widoczność modala — celowo NIE
+  persisted (nie chcemy otwierać Settings przy starcie).
+- `applyTheme()` ustawia `document.documentElement.dataset.theme`. Wołane
+  na module-init (podczas ewaluacji grafu importów, zanim Svelte zamontuje
+  drzewo) → brak flash'a domyślnego amber przy starcie na nie-domyślnym
+  motywie.
+
+### 5 motywów (CSS-var bundles w `app.css`)
+
+- `apiovnia` (default) — żyje na `:root`, bez `data-theme`.
+- `atomic-dark` — near-monochrome czerń, neutralny jasnoszary akcent,
+  zdesaturowane method/JSON kolory ("zero colour noise").
+- `tokyo-night` — granatowe tło, niebiesko-fioletowy akcent (paleta enkia).
+- `monokai` — ciepły charcoal, sygnaturowy różowy akcent (paleta Sublime).
+- `light` — biała baza, ciemny tusz; jedyny non-dark, `color-scheme: light`,
+  akcent ściemniony do czytelnego złota.
+- Każdy motyw = blok `:root[data-theme="..."]` z ~35 tokenami. Lista tokenów
+  trzymana 1:1 z `:root` — brakujący token cicho spada na amber default.
+
+### Nowe tokeny + likwidacja amber-leaków
+
+- Dodane do `:root`: `--on-accent` (kolor tekstu na wypełnionym akcentem
+  tle — CTA, active marki), `--scrollbar`, `--scrollbar-hover`.
+- Skonwertowane hardcode'y, które inaczej zostałyby amber/dark we
+  wszystkich motywach: `.ap-btn.cta` gradient (+ lokalne re-decl
+  w `DetailPanel`, `RequestsPanel`, `OnboardingOverlay`), JSON viewer
+  match-highlight (`.jv-line.match*`), scrollbar, CodeMirror active-line,
+  CommandPalette ring, EnvManageModal lock-icon. CTA hover:
+  `filter: brightness(1.08)` zamiast drugiego hardcoded gradientu.
+- Logo honeycomb (TitleBar + ProjectsPanel footer) **zostaje** hardcoded
+  `#F59E0B` — to znak marki, nie element motywu (jak logo VS Code nie
+  zmienia koloru z motywem).
+
+### `SettingsModal.svelte`
+
+- Wzorzec `EnvManageModal`: `<dialog>` + left-rail nav + right pane.
+- Sekcje: **Appearance** (theme picker — grid kart z mini-preview ze
+  swatchy, live apply na klik), **History** (retention segmented control
+  100/200/500/1000), **About** (wersja z `__APP_VERSION__`, identifier,
+  stack, licencja).
+- Montowany w `App.svelte` pod `{#if settings.open}`.
+
+### Entry points
+
+- Ikona zębatki w footerze `ProjectsPanel` (była: brak — tylko history).
+- Skrót `⌘,` (`keymap.ts`) — konwencja macOS / VS Code dla Preferences.
+- Akcja "Open settings" + 5 akcji `Theme: {nazwa}` w command palette
+  (na końcu listy — przełączają motyw bez otwierania modala).
+- Martwy guzik settings w TitleBarze (top-right, bez `onclick`) usunięty.
+
+### History limit wired
+
+- `app.refreshHistory()` czyta `settings.historyLimit` zamiast hardcoded 200.
+
+### Quality gates
+
+- `pnpm check` ✓ (286 plików, 0/0/0)
+- `pnpm build` ✓ (707 kB JS / 239 kB gzip)
+- `cargo test --workspace` ✓ (169 — zmiany frontend-only, Rust nietknięty)
+
+### Co zostało z Faza 11 → przeniesione do Faza 12
+
+Settings + motywy działają end-to-end. Głębsze ustawienia (timeouty,
+proxy, editor prefs, clear-history, density) wymagają albo zmian
+w Ruście, albo decyzji o storage — zebrane w Fazie 12. Light theme:
+shell themuje się poprawnie, ale pełny audyt rgba/shadow overlayów
+w komponentach jeszcze nie zrobiony — patrz caveat w Faza 12.
+
+---
+
+## Pozostałe fazy — PENDING
 
 ### Punch-list co realnie zostało
 
-**Faza 10 — Security & UX hardening** _(post-MVP, opcjonalne — patrz niżej)_
+**Faza 10 — Security & UX hardening** _(opcjonalne — patrz niżej)_
 - Configurable auto-lock timeout, UI countdown, lock-on-blur/system-lock,
   change-master-password, per-field secrets, hardware keychain wrap,
   brute-force throttling, audit log, full-DB encryption (SQLCipher),
   crypto rotation/versioning. Pełna lista w sekcji "Faza 10 — pomysły".
 
-**Faza 11 — Settings panel + themes** _(post-MVP, ~2-3 dni)_
+**Faza 12 — Settings: rozszerzenie** _(~2 dni)_
 
-Settings ikonka w lewym dolnym rogu już jest w designie ale nic nie robi.
-Domknąć: otwiera modal/panel z konfiguracją per-user.
+Faza 11 dowiozła shell Settings (`SettingsModal`, left-rail nav, `⌘,`,
+palette action) + system 5 motywów + retention limit historii. Sekcje
+**Appearance** i **About** są kompletne; **History** ma na razie tylko
+retention (bez "Clear all history"). Reszta poniżej + audit-conclusions
+to Faza 12. Spec sekcji niżej zostaje jako docelowy kształt panelu.
 
 - `SettingsModal.svelte` (lub side-panel sliding from right) z sekcjami:
   - **Appearance** — theme picker (**5 motywów**, locked-in w Phase 9.5):
@@ -1563,14 +1653,41 @@ Domknąć: otwiera modal/panel z konfiguracją per-user.
 - Theme apply: `$effect` w App.svelte ustawia `document.documentElement.dataset.theme`
   na zmianę → CSS `:root[data-theme="monokai"] { --bg: ... }`.
 
-**Audit do zrobienia przed implementacją:** prześledzić appkę i zebrać
-listę hardcoded'ów które mają sens jako settings:
-- timeouty (executor: 30s — hardcoded)
-- debounce save (250ms — hardcoded)
-- body cap (2MiB — hardcoded)
-- history cap (200 — hardcoded w design intent)
-- panel sizes default (już persisted ale bez UI do resetu)
-- font size (UI 12-14px, mono 12-13px — może `compact|cozy|comfortable`?)
+**Audit — wnioski po zbudowaniu Fazy 11.** Co realnie warto wyciągnąć do
+Settings, pogrupowane wg tego ile to kosztuje:
+
+_Frontend-only (zero Rusta, można dorzucić w dowolnej chwili):_
+- ✅ **Theme** — zrobione (Faza 11).
+- ✅ **History load limit** (100/200/500/1000) — zrobione (Faza 11).
+- **UI density / font scale** — `--row-h`, `--row-h-lg` i bazowy font to
+  CSS-vary; przełącznik `compact | cozy | comfortable` = override jak
+  motyw. Caveat: kilka komponentów hardcode'uje wysokości — trzeba je
+  najpierw przejść. Średni koszt.
+- **Reset panel sizes** — `panels` store ma już `readonly.DEFAULT`;
+  wystarczy przycisk wpisujący defaulty. Trywialne.
+- **JSON viewer defaults** — głębokość auto-expand przy załadowaniu,
+  pokaż/ukryj numery linii. Frontend-only, średnie.
+- Debounce save (250 ms) — dałoby się uczynić ustawieniem, ale wartość
+  dla usera niska; pomijamy / najniższy priorytet.
+
+_Wymaga zmian w Ruście (IPC / przeciągnięcie parametru):_
+- **Send timeout** — `executor.rs` hardcode 30 s; `execute_request` musi
+  przyjąć timeout, executor go uszanować. Mała zmiana.
+- **Max response body size** — `apiovnia-http/src/lib.rs` cap 2 MiB; ten
+  sam kształt co timeout.
+- **Proxy URL / custom CA / verify-TLS** — opcje `reqwest::ClientBuilder`;
+  executor musi budować klienta z ustawień. Większy kawałek.
+- **"Clear all history"** — nowy IPC `clear_history` + metoda repo. Małe.
+- **Configurable auto-lock timeout** (z Fazy 10) — `SessionKeyStore`
+  hardcode'uje 10 min; store musi czytać konfigurowalną wartość.
+
+_Decyzja o storage:_
+- UI-prefs (theme, density, history limit) zostają w `localStorage` —
+  to już działający wzorzec (Faza 11). Ale ustawienia sieci/bezpieczeństwa
+  (proxy, CA, timeout) lepiej trzymać w SQLite (`app_settings`, single-row
+  JSON blob) — inspectowalne w bazie, przeżyją wyczyszczenie webview
+  storage. Rekomendacja: **nie budować `app_settings` na zapas** — dodać
+  dopiero gdy ląduje pierwsze ustawienie sieciowe/krypto.
 
 ---
 
@@ -1586,9 +1703,13 @@ listę hardcoded'ów które mają sens jako settings:
 | ⌘P palette / ⌘K filter swap | ✅ done | 9.5 |
 | Footer shows version | ✅ done | 9.5 |
 | Beautify / Tests / search btn cleanup | ✅ done | 9.5 |
+| Settings shell + 5 motywów | ✅ done | 11 |
 | **Packaging (signing, bundle targets)** | placeholdery | **9 (next)** |
 | Hardening features | brak | 10 |
-| Settings modal + themes (5 themes spec'd) | brak (ikona już jest, no-op) | 11 |
+| Settings: rozszerzenie (timeout, proxy, density, clear-history) | brak | 12 |
+| Wsparcie wielu rodzajów API (GraphQL/WS/SSE/gRPC) | szkic | 13 |
+| CI + release automation (GitHub Actions, tauri-action) | brak | 14 |
+| Strona docs / landing (GitHub Pages) | brak | 15 |
 
 ### Faza 10 — pomysły / dług bezpieczeństwa
 
@@ -1643,6 +1764,112 @@ Zebrane po Phase 6, do rozważenia gdy MVP wyląduje:
   albo bumpnąć m_cost), nie ma czystej ścieżki migracji. Format v2 z
   jawnym prefiksem `apv2|nonce|ct|tag` + path `re_encrypt_v1_to_v2`.
 
+### Faza 13 — wsparcie wielu rodzajów API _(szkic — do rozpisania)_
+
+Apiovnia dziś robi tylko REST/HTTP. W planach wsparcie kolejnych rodzajów
+API. To duży refactor — model `Request` zakłada REST (method + URL +
+params + headers + body + auth); inne protokoły mają inny kształt.
+
+Kandydaci, z grubsza rosnącym kosztem:
+- **GraphQL** — najbliżej REST-a: ten sam transport HTTP POST, ale edytor
+  query/variables + introspekcja schematu + autocomplete. Osobny body
+  mode albo osobny typ requestu.
+- **WebSocket** — long-lived connection, edytor "wyślij wiadomość" + log
+  strumienia przychodzącego. Inny executor (nie request/response).
+- **SSE (Server-Sent Events)** — jednostronny strumień; prostszy niż WS,
+  ale też model "otwórz → obserwuj" zamiast "wyślij → odbierz".
+- **gRPC** — wymaga parsowania `.proto`, reflection, HTTP/2; największy
+  kawałek, prawdopodobnie osobny crate `apiovnia-grpc`.
+
+Otwarte pytania architektoniczne (do rozpisania osobno przed startem):
+- `Request` → `enum RequestKind { Rest, GraphQl, WebSocket, Sse, Grpc }`
+  czy równoległe tabele/modele per protokół?
+- Response viewer dziś zakłada pojedynczy response. WS/SSE potrzebują
+  widoku strumienia (lista wiadomości w czasie).
+- Resolver / env overrides / snippety / OpenAPI — wszystko dziś
+  REST-only; każdy protokół to nowe ścieżki.
+- `HistoryRow` zakłada jeden request → jeden response.
+
+**Status:** świadomie nierozpisane do końca — najpierw decyzja, czy to
+`enum` na istniejącym modelu, czy modele równoległe. To nie jest "dorzuć
+pole", to przeprojektowanie rdzenia; rozpisać jako osobny dokument.
+
+### Faza 14 — CI / wersjonowanie / release management
+
+Tak — pliki dystrybucji idą normalnie na **GitHub Releases** (hostuje
+binarne assety) i da się to w pełni zautomatyzować GitHub Actions.
+
+**CI (`.github/workflows/ci.yml`)** — na push/PR odpala quality gates,
+które i tak mamy zdefiniowane (CLAUDE.md):
+- `pnpm check`, `cargo clippy --workspace -D warnings`,
+  `cargo test --workspace`, `pnpm build`.
+- Linux runner potrzebuje deps Tauri (`webkit2gtk-4.1`,
+  `libayatana-appindicator3`) — instalowane w stepie.
+- Cache: cargo registry + target, pnpm store — inaczej build trwa wieki.
+
+**Release (`.github/workflows/release.yml`)** — trigger na tag `v*`:
+- `tauri-apps/tauri-action` (oficjalna akcja) z matrycą
+  `macos-latest` / `ubuntu-latest` / `windows-latest` — builduje bundle
+  per-OS (.dmg/.app, .deb/.AppImage, .msi) i wrzuca jako assety Release.
+- **Signing:** macOS — bez Apple Developer ID (certy za drogie, świadoma
+  decyzja) → bundle niepodpisany, Gatekeeper ostrzega; w docs instrukcja
+  "prawy klik → Otwórz". Windows — self-signed cert w secrets CI (albo
+  bez podpisu + nota o SmartScreen bypass). Linux — .deb/.AppImage nie
+  wymagają podpisu.
+- Auto-update: skip (zgodnie z planem) — Release to po prostu pliki
+  do pobrania.
+
+**Wersjonowanie** — dług z gotchy: wersja żyje w DWÓCH miejscach
+(`package.json` + `tauri.conf.json`), do tego `__APP_VERSION__` czyta
+z `package.json`. Domknąć:
+- Skrypt `scripts/bump-version.mjs` — jeden bump synchronizuje oba pliki
+  (+ ewentualnie root `Cargo.toml`), commit, tag `vX.Y.Z`.
+- Tag jest źródłem prawdy dla release workflow.
+- `CHANGELOG.md` w formacie Keep a Changelog; body Release ciągnie z niego
+  (albo generowane z Conventional Commits — repo już ma `feat:` prefiksy).
+
+**Zależność:** Faza 9 = packaging działa lokalnie (`tauri.conf.json`
+bundle config). Faza 14 = to samo, ale buduje się na 3 OS-ach w CI
++ ląduje na Releases automatycznie. 9 robi się przed 14.
+
+### Faza 15 — strona docs / landing (GitHub Pages)
+
+Landing + dokumentacja na GitHub Pages, custom domena `apiovnia.trurl.tech`
+(mamy `trurl.tech`, więc zero kosztów — jeden rekord CNAME, darmowy TLS
+od GitHuba).
+
+**Warunek:** Pages za darmo wymaga **publicznego repo** (projekt jest MIT,
+więc i tak docelowo public). Prywatne → wymaga GitHub Pro.
+
+**Stack:** Astro, bespoke (bez docs-theme) — pełna kontrola wyglądu, ma
+wyglądać jak produkt, nie jak wyrenderowany markdown:
+- Import `tokens.css` + brand honeycomb → spójność 1:1 z aplikacją.
+- Self-hosted Inter + JetBrains Mono (już mamy przez `@fontsource`).
+- Bloki kodu przez Shiki, ostylowane paletami motywów z Fazy 11.
+- Markdown = tylko źródło treści; layout / proza / komponenty w 100% nasze.
+- Astro renderuje komponenty Svelte → można wciągnąć istniejące.
+
+**Layout repo:** katalog `site/` w monorepo (NIE mylić z planowanym
+`docs/` na treść markdown). Deploy: `.github/workflows/pages.yml`,
+źródło Pages = "GitHub Actions". `base: '/'` bo custom domena serwuje
+z roota. Custom domenę ustawić w repo settings (nie polegać tylko na
+pliku `CNAME` — ginie przy Actions-deploy).
+
+**Treść:**
+- _Landing_: jedno zdanie czym to jest, 2-3 screenshoty (w browser-chrome
+  ramkach, dark), przyciski download → GitHub Releases, sekcja "why"
+  (local-first / encrypted envs / keyboard-first), link do repo.
+  Opcjonalnie live theme-switcher na atrapie UI (client JS działa).
+- _Docs_: getting started, skróty, environments + override + `{{var}}`,
+  encrypted envs, OpenAPI import/export, Copy as…. Sporo wyprowadzalne
+  z `README.md` i `instruction.md`.
+
+**Timing:** po Fazie 9/14 — landing bez działających przycisków download
+(→ Releases) jest w połowie pusty. Do tego czasu README wystarcza.
+
+**Analytics:** spójnie z "no telemetry" — nic, albo privacy-first
+(Plausible / GoatCounter), nie GA.
+
 ### Co konkretnie zostało (snapshot stanu)
 
 **Działa end-to-end:**
@@ -1690,11 +1917,20 @@ Zebrane po Phase 6, do rozważenia gdy MVP wyląduje:
   onclick. Params/Headers tabs dostały 8px top padding (no longer touch
   border).
 
+**Działa od Faza 11 (2026-05-20):**
+- **Settings panel** — `SettingsModal` z left-rail nav (Appearance /
+  History / About), montowany pod `settings.open`. Wejścia: zębatka
+  w footerze ProjectsPanel, skrót `⌘,`, akcja "Open settings" w palecie.
+- **5 motywów** — apiovnia / atomic-dark / tokyo-night / monokai / light,
+  przełączane live; `<html data-theme>` + CSS-var bundles w `app.css`.
+- **History retention** — konfigurowalny limit (100/200/500/1000).
+
 **Brak feature'u w ogóle:**
 - Packaging dla release — `tauri.conf.json` ma `bundle.targets: "all"` ale
   bez signing config (Phase 9)
-- Settings panel + themes — ikona jest, no-op; **5 themes spec'd**
-  w Phase 11 (apiovnia / atomic-dark / tokyo-night / monokai / light)
+- Settings: rozszerzenie — timeout / proxy / density / clear-history;
+  patrz Faza 12 (audit-conclusions)
+- Wsparcie wielu rodzajów API (GraphQL / WS / SSE / gRPC) — szkic w Fazie 13
 - Phase 10 hardening — patrz lista pomysłów wyżej
 
 ### Otwarte tematy / dług techniczny

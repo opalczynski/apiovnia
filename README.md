@@ -4,14 +4,14 @@
 
 Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no sync, no accounts, no telemetry. Environments (`dev` / `stage` / `prod`) live as per-request overrides instead of variable soup, and any environment can be locked behind a master password with everything inside it encrypted at rest.
 
-> Status: **alpha**. MVP under active development. Phases 0–8 done (storage, request editor, HTTP execution, rich JSON viewer, environments + per-request overrides + `{{var}}` interpolation, multipart bodies with file parts, **master-password sealing for encrypted envs**, **command palette + Copy as… submenu with 5 formats**, **OpenAPI 3.x import + export**). Phase 9 mostly done — **History panel UI**, **`⌘1/2/3` panel focus**, **fresh-DB onboarding overlay**, and (in Phase 9.5) **the honeycomb app icon + TitleBar logo + footer version + shortcut swap (`⌘P` palette / `⌘K` filter sidebar)** all landed. Only **packaging/signing** left before MVP wrap-up. See [`plan.md`](./plan.md) for the per-phase tracker.
+> Status: **alpha**, under active development. Phases 0–9.5 done (storage, request editor, HTTP execution, rich JSON viewer, environments + per-request overrides + `{{var}}` interpolation, multipart bodies with file parts, **master-password sealing for encrypted envs**, **command palette + Copy as… submenu with 5 formats**, **OpenAPI 3.x import + export**, **History panel**, **fresh-DB onboarding**, **honeycomb app icon**). **Phase 11 just landed** — a **Settings panel with five themes** (`apiovnia` / `atomic-dark` / `tokyo-night` / `monokai` / `light`). Next up: packaging, then deeper settings and multi-protocol support. See [`plan.md`](./plan.md) for the per-phase tracker.
 
 ## Why another API client?
 
 - **One SQLite file.** Back it up like any other file. Inspect it with `sqlite3`. Diff it. Move it between machines.
 - **Environments as overrides, not variables.** Define the base request once, then patch fields per env. Switching from `dev` to `prod` swaps the URL, auth, headers — nothing else — and the diff is right there in the UI.
 - **Secrets encrypted per env.** Mark an env as locked, set a password once; secrets get sealed with AES-256-GCM and an Argon2id-derived key. Unlock on demand, lock on quit.
-- **Keyboard-first.** ⌘P palette, ⌘K filter sidebar, ⌘↵ send, ⌘N new request, ⌘1/2/3 panel focus.
+- **Keyboard-first.** ⌘P palette, ⌘K filter sidebar, ⌘↵ send, ⌘N new request, ⌘1/2/3 panel focus, ⌘, settings.
 - **No pre-request scripts.** No test assertions. No "workspaces". The roadmap is intentionally short.
 
 ## What works today
@@ -36,6 +36,7 @@ Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no s
 - **History panel** — slide-in from the left (toggle via the icon in the left-panel footer). The last ~200 executions with status pill, timing, env badge, request/collection breadcrumb, and substring filter. Click a row to navigate to the originating request and rehydrate that saved response.
 - **`⌘1` / `⌘2` / `⌘3`** focus the left-filter / middle-filter / URL bar respectively (cross-platform — `Ctrl` on Linux/Windows).
 - **Fresh-DB onboarding overlay** — a full-shell welcome card on first launch with a primary "Create your first project" CTA, a secondary "Start from OpenAPI spec…" path, a 3-step tour of the three panels, and a keyboard-shortcut cheat-sheet.
+- **Settings panel + five themes** — `⌘,` (or the gear in the left-panel footer) opens a Settings modal. Pick from five themes — `apiovnia` (the amber original), `atomic-dark` (monochrome, zero colour noise), `tokyo-night`, `monokai`, and `light` — applied live across the whole shell, JSON viewer and code editor included. Also a configurable History retention limit and an About pane.
 
 ## On the roadmap (in order)
 
@@ -49,11 +50,15 @@ Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no s
 | 7 | OpenAPI 3.x import + export (schema inference, secret scrubbing, OpLog panel) | ✅ done |
 | 9 | History panel UI, `⌘1/2/3` focus, onboarding overlay | ✅ done |
 | 9.5 | App icon (honeycomb), TitleBar logo, footer version, shortcut swap, UI polish | ✅ done |
-| 9 | Packaging (.dmg/.deb/.AppImage), signing | **next** |
+| 11 | Settings panel + five themes (apiovnia / atomic-dark / tokyo-night / monokai / light) | ✅ done |
+| 9 | Packaging (.deb/.AppImage/.dmg/.msi), signing | **next** |
 | 10 | Security & UX hardening (configurable lock timeout, change-password flow, per-field secrets, hardware keychain wrap, …) | |
-| 11 | Settings panel + themes (monokai, tokyo-night, light, default) | |
+| 12 | Settings expansion (send timeout, proxy/TLS, UI density, clear-history) | |
+| 13 | Multi-protocol support (GraphQL / WebSocket / SSE / gRPC) | sketch |
+| 14 | CI + release automation (GitHub Actions, multi-OS builds → Releases) | |
+| 15 | Docs / landing site (GitHub Pages, custom domain) | |
 
-Out of scope for the MVP: WebSocket / SSE / gRPC / GraphQL, pre-request scripts, response test assertions, sync / sharing / team features, mobile, auto-updater, light theme, drag-to-reorder.
+Out of scope: pre-request scripts, response test assertions, sync / sharing / team features, mobile, auto-updater, drag-to-reorder. (WebSocket / SSE / gRPC / GraphQL were once out of scope — they are now roadmapped as Phase 13. Light theme shipped in Phase 11.)
 
 ## Architecture at a glance
 
