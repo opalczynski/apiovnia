@@ -104,7 +104,7 @@
         fontSize: "11px",
       },
       ".cm-activeLine": {
-        backgroundColor: "rgba(255,255,255,0.02)",
+        backgroundColor: "color-mix(in srgb, var(--fg) 3%, transparent)",
       },
       ".cm-activeLineGutter": {
         backgroundColor: "transparent",

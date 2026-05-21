@@ -15,6 +15,7 @@
 
 import { app } from "$lib/stores/app.svelte";
 import { dialogs } from "$lib/stores/dialogs.svelte";
+import { settings } from "$lib/stores/settings.svelte";
 
 const isMac =
   typeof navigator !== "undefined" &&
@@ -47,6 +48,14 @@ export function installKeymap(): () => void {
       e.preventDefault();
       if (app.commandPaletteOpen) app.closePalette();
       else app.openPalette();
+      return;
+    }
+
+    // ⌘, — toggle Settings. The macOS / VS Code convention for Preferences;
+    // works from anywhere, inputs included.
+    if (k === ",") {
+      e.preventDefault();
+      settings.toggle();
       return;
     }
 
