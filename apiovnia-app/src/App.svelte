@@ -15,7 +15,9 @@
   import OpLogHost from "$lib/components/OpLogHost.svelte";
   import HistoryPanel from "$lib/components/panels/HistoryPanel.svelte";
   import OnboardingOverlay from "$lib/components/OnboardingOverlay.svelte";
+  import SettingsModal from "$lib/components/modals/SettingsModal.svelte";
   import { app } from "$lib/stores/app.svelte";
+  import { settings } from "$lib/stores/settings.svelte";
   import { installKeymap } from "$lib/keymap";
 
   onMount(() => {
@@ -79,6 +81,10 @@
 
   {#if !app.loading && app.projects.length === 0}
     <OnboardingOverlay />
+  {/if}
+
+  {#if settings.open}
+    <SettingsModal onClose={() => (settings.open = false)} />
   {/if}
 
   <ToastHost />

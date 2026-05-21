@@ -15,6 +15,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 
 import * as ipc from "$lib/api/ipc";
 import { dialogs } from "$lib/stores/dialogs.svelte";
+import { settings } from "$lib/stores/settings.svelte";
 import type {
   Collection,
   CollectionId,
@@ -150,7 +151,8 @@ const state = $state({
    *  the command palette's per-env action. */
   envPasswordSetupId: null as EnvironmentId | null,
   /** History panel (Phase 9) — slide-in overlay from the left, shows the
-   *  last ~200 executions. Loaded lazily on first open. */
+   *  last N executions (`settings.historyLimit`, default 200). Loaded lazily
+   *  on first open. */
   historyPanelOpen: false,
   historyEntries: [] as HistoryRow[],
   historyLoading: false,
@@ -1214,7 +1216,7 @@ async function deleteRequest(id: RequestId): Promise<void> {
 async function refreshHistory(): Promise<void> {
   state.historyLoading = true;
   try {
-    state.historyEntries = await ipc.listHistory(200);
+    state.historyEntries = await ipc.listHistory(settings.historyLimit);
   } catch (e) {
     setError(e);
   } finally {
