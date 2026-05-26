@@ -1,140 +1,163 @@
+<div align="center">
+
+<img src="apiovnia-app/src-tauri/icons/apiovnia.svg" width="96" height="96" alt="Apiovnia logo" />
+
 # Apiovnia
 
-**A local-first REST API client for solo devs.** Postman without the cloud, the team features, or the launch screen.
+**A local-first REST API client that minds its own business.**
 
-Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no sync, no accounts, no telemetry. Environments (`dev` / `stage` / `prod`) live as per-request overrides instead of variable soup, and any environment can be locked behind a master password with everything inside it encrypted at rest.
+One SQLite file on your machine. Environments as per-request overrides, not variable soup. Any environment can be sealed behind a master password. No cloud, no accounts, no roadmap toward either.
 
-> Status: **alpha**, under active development. Phases 0–9.5 done (storage, request editor, HTTP execution, rich JSON viewer, environments + per-request overrides + `{{var}}` interpolation, multipart bodies with file parts, **master-password sealing for encrypted envs**, **command palette + Copy as… submenu with 5 formats**, **OpenAPI 3.x import + export**, **History panel**, **fresh-DB onboarding**, **honeycomb app icon**). **Phase 11** added a **Settings panel with five themes** (`apiovnia` / `atomic-dark` / `tokyo-night` / `monokai` / `light`); **Phase 13.1 just landed GraphQL** — a query + variables editor sent as a JSON `POST`. Next up: packaging, then the rest of multi-protocol support (SSE, then MCP). See [`plan.md`](./plan.md) for the per-phase tracker.
+[![CI](https://github.com/opalczynski/apiovnia/actions/workflows/ci.yml/badge.svg)](https://github.com/opalczynski/apiovnia/actions/workflows/ci.yml)
+[![License: PolyForm NC 1.0.0](https://img.shields.io/badge/license-PolyForm--NC--1.0.0-F59E0B.svg)](./LICENSE)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-FBBF24.svg)](#status)
 
-## Why another API client?
+[**Website**](https://opalczynski.github.io/apiovnia/) · [**Features**](https://opalczynski.github.io/apiovnia/features) · [**Roadmap**](https://opalczynski.github.io/apiovnia/roadmap) · [**Docs**](https://opalczynski.github.io/apiovnia/docs)
 
-- **One SQLite file.** Back it up like any other file. Inspect it with `sqlite3`. Diff it. Move it between machines.
-- **Environments as overrides, not variables.** Define the base request once, then patch fields per env. Switching from `dev` to `prod` swaps the URL, auth, headers — nothing else — and the diff is right there in the UI.
-- **Secrets encrypted per env.** Mark an env as locked, set a password once; secrets get sealed with AES-256-GCM and an Argon2id-derived key. Unlock on demand, lock on quit.
-- **Keyboard-first.** ⌘P palette, ⌘K filter sidebar, ⌘↵ send, ⌘N new request, ⌘1/2/3 panel focus, ⌘, settings.
-- **No pre-request scripts.** No test assertions. No "workspaces". The roadmap is intentionally short.
+</div>
 
-## What works today
+---
 
-- Three-panel shell (Projects · Collections · Requests · Editor + Response), resizable, persisted.
-- Projects → Collections → Requests CRUD against SQLite. Switching a project auto-cascades to the first collection and first request — no empty-flash.
-- Filter inputs in both side panels: text filter over projects + collections (with ⌘P focus), text + HTTP-method-multi-select for requests.
-- Request editor: method picker, URL, params, headers, body (None / JSON / **GraphQL** / **Form (urlencoded)** / **Multipart (text + files)** / Raw), auth (none / bearer / basic / apikey). Edits debounce-save in 250 ms.
-- CodeMirror 6 body editor with JSON parse-lint (single gutter marker, banner above the editor on errors).
-- HTTP execution (`reqwest`, rustls, gzip, redirects). 30 s timeout, 2 MiB body cap with truncation indicator.
-- Response viewer with sub-tabs: **Pretty** (custom JSON viewer with collapsible nodes, ⌘F search + next/prev nav, hover-copy per value, expand/collapse-all; CodeMirror for HTML/XML/plain), **Headers**, **Request** (final URL + headers + body preview sent on the wire — multipart preview is reconstructed in RFC-7578 form with `[N bytes — file contents omitted]` placeholders), **Raw**.
-- Request history persisted to SQLite; last successful response rehydrates on app restart and request switch.
-- **Environments + per-request overrides + `{{var}}` interpolation.** Define `dev` / `stage` / `prod` envs per project, set per-(request, env) overrides for URL / method / headers / params / body / auth, and reference env variables anywhere via `{{name}}`. Resolution order: `request > env override > base`. Headers and params overrides are **full replacements**, not per-key merges. Pure resolver in `apiovnia-core` (33 unit tests).
-- **Master-password sealing per env.** Mark an env as encrypted, set a master password (zxcvbn-graded with a live "cracking time" meter and a pro-user bypass), and every variable value + secret-bearing override field gets AES-256-GCM'd with an Argon2id-derived key. Frontend never sees the key — resolver runs in Rust. **Auto-locks after 10 min idle**; unlock modal pops automatically on any operation that needs the key, with a `retry` hook that re-runs the original Send.
-- **Command palette (⌘P).** Spotlight-style switcher with fuzzy ranking across requests / collections / projects / envs of the active project, plus actions (`New X`, `Enable/Disable encryption for {env}`, `Lock {env}`, `Manage envs & variables`, `Copy as {format}: {active request}`, `Import/Export OpenAPI`). `⌘N` opens the new-request prompt. `⌘K` focuses the left-panel filter (Postman/Slack-style sidebar search).
-- **Copy as… submenu (5 formats).** Right-click any request (or use the palette) → **curl** / **Python (`requests`)** / **HTTPie** / **JavaScript (`fetch`)** / **PowerShell (`Invoke-RestMethod`)**. Full env override + `{{var}}` resolution + decryption of encrypted env values. Locked envs trigger the unlock modal with an auto-retry. Per-format proper escaping, native idioms (`--user`/`auth=()`/`btoa()`/`[Convert]::ToBase64String`), multipart with `--form k=@/path` / `files=[(...)]` / `FormData` / `-Form @{... = Get-Item ...}`.
-- **OpenAPI 3.x import + export.** Right-click project → "Import OpenAPI…" to ingest any YAML/JSON spec — `$ref`-resolved request bodies get dummy values inferred from the schema (with format hints for `date-time`/`email`/`uuid`/`uri`), `securitySchemes` map to `AuthConfig`, multi-server specs become `Environment`s with per-request URL overrides. Right-click collection → "Export OpenAPI…" to save a YAML with **aggressive secret scrubbing** (typed `<your-bearer-token>` / `<your-password>` / `<your-api-key>` placeholders), inferred per-request schema in `components.schemas` with `$ref` link, and **abort-on-collision** for `(method, path)` clashes. **Persistent OpLog panel** with tabular per-request rows + warnings + "Download log" button writes a `.log` audit trail.
-- Smart empty-state CTAs (no project / no collection / no request) drive the create flow from any panel.
-- Custom modal dialogs and context menus (no native `prompt`/`confirm`).
-- Global toast notifications for transient feedback (Copy success, etc).
-- Send-button elapsed timer so slow endpoints don't look frozen.
-- **History panel** — slide-in from the left (toggle via the icon in the left-panel footer). The last ~200 executions with status pill, timing, env badge, request/collection breadcrumb, and substring filter. Click a row to navigate to the originating request and rehydrate that saved response.
-- **`⌘1` / `⌘2` / `⌘3`** focus the left-filter / middle-filter / URL bar respectively (cross-platform — `Ctrl` on Linux/Windows).
-- **Fresh-DB onboarding overlay** — a full-shell welcome card on first launch with a primary "Create your first project" CTA, a secondary "Start from OpenAPI spec…" path, a 3-step tour of the three panels, and a keyboard-shortcut cheat-sheet.
-- **Settings panel + five themes** — `⌘,` (or the gear in the left-panel footer) opens a Settings modal. Pick from five themes — `apiovnia` (the amber original), `atomic-dark` (monochrome, zero colour noise), `tokyo-night`, `monokai`, and `light` — applied live across the whole shell, JSON viewer and code editor included. Also a configurable History retention limit and an About pane.
-- **GraphQL requests** — pick "GraphQL" as the body type for a split editor: a syntax-highlighted query pane (query / mutation / subscription / fragment) on top, a JSON variables pane with parse-lint below. Sent per the GraphQL-over-HTTP spec — **POST** ships the `{query, variables}` envelope as a JSON body (queries + mutations); **GET** moves `query` / `variables` into the URL query string (read-only queries, cacheable). The method picker is restricted to GET/POST while the body type is GraphQL. It rides every existing rail — env variables, per-env overrides, history, and "Copy as…" all work unchanged.
+## Why this exists
 
-## On the roadmap (in order)
+Every tool in this category starts the same way. Small, sharp, written by someone who needed it themselves. Then comes the second act — an investor, a strategic partner, a pivot toward "the enterprise." The roadmap fills with features nobody asked for and empties of the ones that mattered. Five years in, the tool that solved your problem is now a problem of its own.
 
-| Phase | What | Status |
-|---|---|---|
-| 4 | Rich JSON viewer — collapsible nodes, ⌘F search, hover-copy | ✅ done |
-| 5 | Environments + per-request overrides + resolver | ✅ done |
-| 5.5/5.6 | Multipart bodies + polish (filtres, cascade auto-pick, empty states) | ✅ done |
-| 6 | Master password / per-env encryption (Argon2id + AES-256-GCM, zxcvbn meter, 10 min idle auto-lock) | ✅ done |
-| 8 | Command palette + ⌘K/⌘N, palette env actions, **Copy as… submenu (5 formats)** | ✅ done |
-| 7 | OpenAPI 3.x import + export (schema inference, secret scrubbing, OpLog panel) | ✅ done |
-| 9 | History panel UI, `⌘1/2/3` focus, onboarding overlay | ✅ done |
-| 9.5 | App icon (honeycomb), TitleBar logo, footer version, shortcut swap, UI polish | ✅ done |
-| 11 | Settings panel + five themes (apiovnia / atomic-dark / tokyo-night / monokai / light) | ✅ done |
-| 9 | Packaging (.deb/.AppImage/.dmg/.msi), signing | **next** |
-| 10 | Security & UX hardening (configurable lock timeout, change-password flow, per-field secrets, hardware keychain wrap, …) | |
-| 12 | Settings expansion (send timeout, proxy/TLS, UI density, clear-history) | |
-| 13.1 | GraphQL — query + variables editor, `POST` (JSON body) + `GET` (query string) execution | ✅ done |
-| 13 | Multi-protocol support — SSE next, then MCP (WebSocket / gRPC deferred) | scoped |
-| 14 | CI + release automation (GitHub Actions, multi-OS builds → Releases) | |
-| 15 | Docs / landing site (GitHub Pages, custom domain) | |
+Apiovnia is built next to that structure, not against it. There's no investor to satisfy. No growth curve to bend. The whole thing is one SQLite file on your machine — yours to back up, inspect, copy, or delete. The price is honest. Free, forever. The full version of this argument lives [on the website](https://opalczynski.github.io/apiovnia/#manifesto).
 
-Out of scope: pre-request scripts, response test assertions, sync / sharing / team features, mobile, auto-updater, drag-to-reorder. (WebSocket / SSE / gRPC / GraphQL were once out of scope — they are now roadmapped as Phase 13; GraphQL shipped in 13.1, SSE + MCP are next. Light theme shipped in Phase 11.)
+## Status
 
-## Architecture at a glance
+**Alpha, under active development.** Tested daily by the author. Public binaries land with Phase 14 (CI release automation). Until then, build from source — it's a couple of minutes if Rust + Node are already in your PATH.
 
-```
-apiovnia-app/
-├── src/                      # Svelte 5 frontend (runes, Vite, Tailwind v4)
-│   ├── App.svelte
-│   └── lib/
-│       ├── api/ipc.ts        # typed wrappers around `invoke<T>`
-│       ├── stores/           # $state modules: app, panels, dialogs
-│       └── components/{layout,panels,request,response,modals,ui}
-└── src-tauri/                # Cargo workspace
-    ├── src/                  # apiovnia-tauri binary — thin command layer
-    └── crates/
-        ├── apiovnia-core     # domain models, resolver, interpolation, snippet generators
-        ├── apiovnia-storage  # sqlx pool, migrations, repos
-        ├── apiovnia-http     # reqwest executor, content-type classification
-        ├── apiovnia-crypto   # Argon2id + AES-256-GCM, zxcvbn password policy
-        └── apiovnia-openapi  # oas3 import/export, secret scrubbing, schema inference
-```
+182 tests behind the resolver, the crypto, the snippets, and the GraphQL body. Phases 0–11 + 13.1 + 15 done; see [`plan.md`](./plan.md) for the live per-phase tracker.
 
-The `core` crate has zero Tauri / SQL / HTTP dependencies — it's where unit-testable logic lives (resolver, variable interpolation, validation). Everything else depends on it.
+## What it does (today)
 
-## Running it locally
+- **Projects → Collections → Requests** in one SQLite file, with full CRUD
+- **Request editor** — method, URL, params, headers, body (JSON / GraphQL / Form / Multipart / Raw), auth (Bearer / Basic / API key / none); CodeMirror 6 body editor with parse-lint
+- **HTTP execution** via `reqwest` + rustls, gzip, redirects, 30 s timeout, 2 MiB body cap
+- **Response viewer** with a custom JSON tree (collapsible nodes, ⌘F search, hover-copy per value) and Pretty / Headers / Request / Raw tabs
+- **Environments + per-(request, env) overrides + `{{var}}` interpolation**, resolved in Rust before the wire request is built
+- **Master-password encrypted environments** — Argon2id + AES-256-GCM, 10 min idle auto-lock, zxcvbn meter with explicit pro-user bypass
+- **Command palette (⌘P)** — fuzzy ranking across requests, collections, projects, envs, and actions
+- **Copy as…** — curl / Python (`requests`) / HTTPie / JavaScript (`fetch`) / PowerShell, env-resolved and secrets-decrypted
+- **OpenAPI 3.x** import + export — `$ref` resolution, schema inference, secret scrubbing, persistent OpLog audit panel
+- **GraphQL** — split query + variables editor, POST or GET per the GraphQL-over-HTTP spec
+- **History panel** — last ~200 executions, filterable, click to navigate and rehydrate the saved response
+- **Five themes** — apiovnia (amber default) / atomic-dark / tokyo-night / monokai / light, applied live
 
-Requires Rust stable, Node ≥ 20, pnpm, plus the usual Tauri 2 system deps (`webkit2gtk-4.1`, `libayatana-appindicator3` on Linux — see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)).
+Full feature deep-dive is on the [website](https://opalczynski.github.io/apiovnia/features).
+
+## What it deliberately won't become
+
+No pre-request scripts. No response test assertions. No team workspaces. No sync. No browser version. No mobile. No auto-updater. The longer this list grows, the more useful Apiovnia stays.
+
+## Install
+
+### Pre-built binaries
+
+Coming with **Phase 14**. Watch [Releases](https://github.com/opalczynski/apiovnia/releases) — or build from source below.
+
+### Build from source
+
+Requires Rust stable, Node ≥ 20, pnpm, plus the usual Tauri 2 system deps. On Linux that's `webkit2gtk-4.1`, `libayatana-appindicator3`, `librsvg2-dev`, `libgtk-3-dev`, `libssl-dev` — see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
 ```bash
-# Linux dev box only — adjusts PATH for cargo + pnpm
-source .envrc.local
-
-cd apiovnia-app
+git clone https://github.com/opalczynski/apiovnia.git
+cd apiovnia/apiovnia-app
 pnpm install
 pnpm tauri:dev          # opens the native window with Vite HMR + Rust hot rebuild
 ```
 
-Frontend-only smoke (no native window):
+For a release bundle (`.deb` / `.AppImage` / `.dmg` / `.msi` depending on your platform):
 
 ```bash
-cd apiovnia-app && pnpm dev
+pnpm tauri:build
 ```
 
-Local data lives at `~/.local/share/tech.trurl.apiovnia/apiovnia.db` (Linux XDG) / `~/Library/Application Support/tech.trurl.apiovnia/apiovnia.db` (macOS). Wipe the file for a fresh state.
+Output lands in `apiovnia-app/src-tauri/target/release/bundle/`.
 
-## Quality gates
+### Where your data lives
+
+Linux: `~/.local/share/tech.trurl.apiovnia/apiovnia.db`
+macOS: `~/Library/Application Support/tech.trurl.apiovnia/apiovnia.db`
+Windows: `%APPDATA%\tech.trurl.apiovnia\apiovnia.db`
+
+Delete the file for a fresh state. There is nothing else to clean.
+
+## Repo layout
+
+```
+.
+├── apiovnia-app/             # the desktop app — Tauri 2 + Vite + Svelte 5
+│   ├── src/                  # Svelte 5 frontend (runes only)
+│   └── src-tauri/            # Cargo workspace
+│       ├── src/              # apiovnia-tauri binary — thin command layer
+│       └── crates/
+│           ├── apiovnia-core/     # domain models, resolver, interpolation, snippets — no Tauri/SQL deps
+│           ├── apiovnia-storage/  # sqlx pool, migrations, repos
+│           ├── apiovnia-http/     # reqwest executor, content-type classification
+│           ├── apiovnia-crypto/   # Argon2id + AES-256-GCM, zxcvbn password policy
+│           └── apiovnia-openapi/  # oas3 import/export, secret scrubbing, schema inference
+├── apiovnia-site/            # Astro 5 landing + docs (deploys to GH Pages)
+├── design_artifacts/         # static HTML/JSX design canvas + tokens.css
+├── instruction.md            # immutable product brief
+├── plan.md                   # phased implementation plan + live progress log
+├── CLAUDE.md                 # notes for Claude / future-me working in this repo
+└── LICENSE                   # PolyForm Noncommercial 1.0.0
+```
+
+`apiovnia-core` has zero Tauri / SQL / HTTP dependencies — it's where unit-testable logic lives (resolver, variable interpolation, validation, snippets, GraphQL body). Everything else depends on it.
+
+## Tests + quality gates
+
+These are the same gates CI runs. Everything has to pass before a phase is called done.
 
 ```bash
 cd apiovnia-app
-pnpm check                                                                    # svelte-check + tsc
+
+# frontend
+pnpm check                                                # svelte-check + tsc
+pnpm build                                                # Vite production bundle
+
+# backend
 cargo --manifest-path src-tauri/Cargo.toml clippy --workspace --all-targets -- -D warnings
 cargo --manifest-path src-tauri/Cargo.toml test --workspace
-pnpm build                                                                    # Vite production bundle
 ```
 
-Rust unit tests cover the storage layer (in-memory SQLite, 5 cases), HTTP content-type classification (2 cases), the env resolver + `{{var}}` interpolation (33 cases), the snippet generators (45 cases across curl/Python/HTTPie/JavaScript/PowerShell — methods, query encoding, auth flavours, all body types, multipart, the GraphQL POST/GET fold, language-specific escaping), the GraphQL body model (11 cases — wire-envelope round-trip, variable splicing, GET query-param mapping, strict validation), crypto (21 cases — 13 AEAD round-trip / wrong-key / tamper / password check, 8 zxcvbn policy paths), and OpenAPI (56 cases + 1 integration test against the real petstore — redact, export schema inference, import `$ref` synthesis). **182 tests total today.**
+Coverage: 5 storage cases, 2 HTTP content-type cases, 33 resolver + interpolation cases, 45 snippet cases (curl / Python / HTTPie / JS / PowerShell), 11 GraphQL body cases + 2 snippet folds, 21 crypto cases (13 AEAD round-trip / tamper + 8 zxcvbn policy), 56 OpenAPI cases + 1 integration against the real petstore.
 
 ## Tech stack
 
 - **Tauri 2.x** — desktop shell, IPC, packaging
-- **Rust** — `reqwest` (rustls), `sqlx` (SQLite, async), `argon2` + `aes-gcm` + `zxcvbn`, `oas3` (Phase 7)
+- **Rust** — `reqwest` (rustls), `sqlx` (SQLite, async), `argon2` + `aes-gcm` + `zxcvbn`, `oas3`
 - **Svelte 5** — runes API only, no legacy stores
-- **Vite 6** — frontend bundler (no SvelteKit — this is a desktop app, SSR is irrelevant)
+- **Vite 6** — frontend bundler (no SvelteKit; this is a desktop app, SSR is irrelevant)
 - **Tailwind v4** — CSS-first `@theme` config, plus plain CSS in scoped `<style>` blocks for design-token parity
-- **CodeMirror 6** — body editor (JSON / HTML / XML / GraphQL) with our own dark theme keyed on the design tokens; the GraphQL mode is a tiny hand-rolled `StreamLanguage` (no `cm6-graphql` dependency)
-- **`tauri-plugin-dialog`** — native file picker for multipart file parts
+- **CodeMirror 6** — body editor (JSON / HTML / XML / GraphQL) with a custom dark theme keyed to the design tokens
+- **Astro 5** — static site generator for the landing page
 
-## Repo conventions
+## Contributing
 
-- Phased plan in `plan.md` — every phase ships something runnable, no internal-only phases.
-- Product brief in `instruction.md` is the immutable contract; deviations get noted in `plan.md`.
-- Design canvas (`design_artifacts/`) is the visual reference. Component CSS mirrors `tokens.css` 1:1.
-- Notes for Claude / future-me: [`CLAUDE.md`](./CLAUDE.md).
-- Commits live on a single branch; no `main` vs `develop` gymnastics.
+Not really, no. Apiovnia is a single-developer product with a deliberately small surface area and an ending roadmap. Random feature PRs ("add WebSocket support", "add a Postman importer", "what if it ran in the browser") will be politely closed. The list of things Apiovnia [will not become](https://opalczynski.github.io/apiovnia/roadmap#oos) is the feature.
+
+**But if you are determined enough**, the door isn't locked:
+
+- **Bug reports** — yes, always. Open an [issue](https://github.com/opalczynski/apiovnia/issues) with reproduction steps and your platform. The smaller and weirder the repro, the more I'll like you.
+- **Documentation fixes** — yes. Typo, outdated path, broken link in the site, dead instruction in `docs/` — PR welcome, no ceremony.
+- **Bugfix PRs** — yes, if the bug is real and the fix is surgical. Open an issue first so we can agree the bug exists before you write code.
+- **Feature PRs** — almost never. If you have an idea you genuinely think fits the project's posture, open an issue describing the use case (not the implementation) and wait for a "go" before writing code. PRs without prior discussion will be closed.
+- **Refactor / cleanup PRs** — no. The code is the way it is on purpose; please don't.
+
+The repo follows the conventions in [`CLAUDE.md`](./CLAUDE.md) (runes only, layered crates, additive migrations, design tokens, save-cycle state machine). Read it before opening a PR.
 
 ## License
 
-MIT (provisional — to be confirmed at first release).
+[**PolyForm Noncommercial 1.0.0**](./LICENSE).
+
+Use, copy, modify, distribute — fine for personal use, education, private research, and non-profit organisations. Commercial use requires a separate licence from the author. If you're not sure which side of that line you sit on, [open a discussion](https://github.com/opalczynski/apiovnia/discussions) and we'll figure it out.
+
+---
+
+<div align="center">
+<sub>Built by <a href="https://github.com/opalczynski">Sebastian Opałczyński</a>, somewhere with good coffee and bad Rust.</sub>
+</div>
