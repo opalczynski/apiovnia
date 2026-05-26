@@ -16,6 +16,7 @@
   import CodeMirrorEditor from "$lib/components/ui/CodeMirrorEditor.svelte";
   import KeyValueTable from "../KeyValueTable.svelte";
   import MultipartTable from "../MultipartTable.svelte";
+  import GraphQlEditor from "../GraphQlEditor.svelte";
   import type {
     BodyType,
     KeyValue,
@@ -36,13 +37,21 @@
   const TYPES = [
     { value: "none" as BodyType, label: "None" },
     { value: "json" as BodyType, label: "JSON" },
+    { value: "graphql" as BodyType, label: "GraphQL" },
     { value: "form" as BodyType, label: "Form" },
     { value: "multipart" as BodyType, label: "Multipart" },
     { value: "raw" as BodyType, label: "Raw" },
   ];
 
   function setType(t: BodyType) {
-    onPatch({ bodyType: t });
+    // GraphQL only speaks GET (queries) and POST (queries + mutations);
+    // POST is the universal default. Force it on switch so the method picker
+    // — now restricted to GET/POST — can't be left on a verb GraphQL ignores.
+    if (t === "graphql" && request.method !== "POST") {
+      onPatch({ bodyType: t, method: "POST" });
+    } else {
+      onPatch({ bodyType: t });
+    }
   }
   function setText(next: string) {
     onPatch({ bodyContent: next });
@@ -119,6 +128,8 @@
         lint
         onLintChange={(n) => (lintCount = n)}
       />
+    {:else if request.bodyType === "graphql"}
+      <GraphQlEditor bodyContent={request.bodyContent} onChange={setText} />
     {:else if request.bodyType === "raw"}
       <CodeMirrorEditor
         value={request.bodyContent}

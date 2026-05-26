@@ -59,7 +59,8 @@ pub fn to_javascript_fetch(req: &Request) -> String {
     let mut prelude: Vec<String> = Vec::new();
     let body_expr: Option<String> = match req.body_type {
         BodyType::None => None,
-        BodyType::Json => {
+        // GraphQL is folded into a JSON body upstream by `SnippetFormat::render`.
+        BodyType::Json | BodyType::GraphQl => {
             // The literal is embedded inside `body: JSON.stringify(...)` at
             // the fetch-options indent (2 spaces). Start the nested JSON
             // at depth 1 so its keys land at 4 spaces and the closing

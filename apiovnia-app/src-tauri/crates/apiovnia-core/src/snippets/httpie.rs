@@ -87,7 +87,8 @@ pub fn to_httpie(req: &Request) -> String {
     // Body.
     match req.body_type {
         BodyType::None => {}
-        BodyType::Json => {
+        // GraphQL is folded into a JSON body upstream by `SnippetFormat::render`.
+        BodyType::Json | BodyType::GraphQl => {
             // Prefer HTTPie's native JSON shorthand — `key=value` for
             // string values, `key:=jsonval` for everything else (numbers,
             // bools, arrays, objects). More idiomatic than `--raw` for

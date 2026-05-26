@@ -50,6 +50,9 @@ pub enum BodyType {
     /// `multipart/form-data` — text OR file per field. Required for uploads.
     Multipart,
     Raw,
+    /// GraphQL — `body_content` holds a [`crate::graphql::GraphQlBody`]
+    /// (query + variables) as JSON; the executor sends it as a JSON `POST`.
+    GraphQl,
 }
 
 /// One row in a key/value table (headers, query params, form fields).

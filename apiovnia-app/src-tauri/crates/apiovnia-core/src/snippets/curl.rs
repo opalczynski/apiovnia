@@ -60,7 +60,8 @@ pub fn to_curl(req: &Request) -> String {
 
     match req.body_type {
         BodyType::None => {}
-        BodyType::Json => {
+        // GraphQL is folded into a JSON body upstream by `SnippetFormat::render`.
+        BodyType::Json | BodyType::GraphQl => {
             if !user_set_ct {
                 push_header(&mut out, "Content-Type", "application/json");
             }

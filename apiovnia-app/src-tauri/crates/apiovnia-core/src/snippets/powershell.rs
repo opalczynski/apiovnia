@@ -103,7 +103,8 @@ pub fn to_powershell(req: &Request) -> String {
     // Body.
     match req.body_type {
         BodyType::None => {}
-        BodyType::Json | BodyType::Raw => {
+        // GraphQL is folded into a JSON body upstream by `SnippetFormat::render`.
+        BodyType::Json | BodyType::Raw | BodyType::GraphQl => {
             // Single-quoted PowerShell literal — no escapes apart from
             // doubled apostrophes inside.
             prelude.push(format!("$body = {}", ps_sq(&req.body_content)));

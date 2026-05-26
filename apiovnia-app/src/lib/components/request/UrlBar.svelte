@@ -33,7 +33,7 @@
     }
   }
 
-  const METHODS: SelectOption<HttpMethod>[] = [
+  const ALL_METHODS: SelectOption<HttpMethod>[] = [
     { value: "GET", label: "GET" },
     { value: "POST", label: "POST" },
     { value: "PUT", label: "PUT" },
@@ -42,6 +42,15 @@
     { value: "HEAD", label: "HEAD" },
     { value: "OPTIONS", label: "OPTIONS" },
   ];
+
+  // GraphQL-over-HTTP only uses POST (queries + mutations) and GET (queries
+  // only) — the other verbs carry no meaning in GraphQL, so the picker hides
+  // them. `BodyTab` already forces POST when the body type is switched.
+  const methods = $derived(
+    request.bodyType === "graphql"
+      ? ALL_METHODS.filter((m) => m.value === "GET" || m.value === "POST")
+      : ALL_METHODS,
+  );
 
   function setMethod(m: HttpMethod) {
     onPatch({ method: m });
@@ -54,7 +63,7 @@
 <div class="urlbar">
   <Select
     value={request.method}
-    options={METHODS}
+    options={methods}
     onChange={setMethod}
     ariaLabel="HTTP method"
     class="method-select"

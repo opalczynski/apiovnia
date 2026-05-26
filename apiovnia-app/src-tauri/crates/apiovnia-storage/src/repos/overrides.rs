@@ -437,6 +437,7 @@ fn body_type_str(b: BodyType) -> &'static str {
         BodyType::Form => "form",
         BodyType::Multipart => "multipart",
         BodyType::Raw => "raw",
+        BodyType::GraphQl => "graphql",
     }
 }
 
@@ -447,6 +448,7 @@ fn parse_body_type(s: &str) -> Result<BodyType> {
         "form" => BodyType::Form,
         "multipart" => BodyType::Multipart,
         "raw" => BodyType::Raw,
+        "graphql" => BodyType::GraphQl,
         other => {
             return Err(StorageError::InvalidData(format!(
                 "unknown body_type override {other:?}"
