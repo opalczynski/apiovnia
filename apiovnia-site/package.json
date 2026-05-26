@@ -12,7 +12,8 @@
     "astro": "astro",
     "check": "astro check"
   },
-  "license": "MIT",
+  "author": "Sebastian Opałczyński",
+  "license": "SEE LICENSE IN ../LICENSE",
   "dependencies": {
     "@fontsource/inter": "^5.1.0",
     "@fontsource/jetbrains-mono": "^5.1.0",

@@ -473,7 +473,7 @@ fn synthesize_multipart_snapshot(
             }
             MultipartKind::File => {
                 let path = std::path::Path::new(&r.file_path);
-                let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                let file_size = std::fs::metadata(path).map_or(0, |m| m.len());
                 let basename = path
                     .file_name()
                     .map_or_else(|| r.key.clone(), |s| s.to_string_lossy().into_owned());

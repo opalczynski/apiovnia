@@ -481,7 +481,9 @@ fn schema_from_example(value: &Value) -> ObjectSchema {
             ..ObjectSchema::default()
         },
         Value::Array(arr) => {
-            let item_schema = arr.first().map(schema_from_example).unwrap_or_default();
+            let item_schema = arr
+                .first()
+                .map_or_else(ObjectSchema::default, schema_from_example);
             ObjectSchema {
                 schema_type: Some(SchemaTypeSet::Single(SchemaType::Array)),
                 items: Some(Box::new(ObjectOrReference::Object(item_schema))),
