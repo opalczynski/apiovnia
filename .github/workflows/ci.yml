@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel in-flight runs of this workflow on the same branch when a new commit lands.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: Rust — clippy + workspace tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tauri Linux system deps — needed even for `cargo check` because
+      # apiovnia-tauri links against webkit2gtk via the tauri crate.
+      - name: Install Tauri Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libgtk-3-dev \
+            libssl-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file
+
+      - name: Install Rust toolchain (stable + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo registry + build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apiovnia-app/src-tauri
+
+      - name: Clippy (-D warnings)
+        working-directory: apiovnia-app/src-tauri
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests (workspace)
+        working-directory: apiovnia-app/src-tauri
+        run: cargo test --workspace
+
+  frontend:
+    name: Frontend — svelte-check + Vite build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apiovnia-app/pnpm-lock.yaml
+
+      - name: pnpm install
+        working-directory: apiovnia-app
+        run: pnpm install --frozen-lockfile
+
+      - name: svelte-check + tsc
+        working-directory: apiovnia-app
+        run: pnpm check
+
+      - name: Vite production build
+        working-directory: apiovnia-app
+        run: pnpm build
+
+  site:
+    name: Site — Astro build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apiovnia-site/pnpm-lock.yaml
+
+      - name: pnpm install
+        working-directory: apiovnia-site
+        run: pnpm install --frozen-lockfile
+
+      - name: Astro check
+        working-directory: apiovnia-site
+        run: pnpm check
+
+      - name: Astro build
+        working-directory: apiovnia-site
+        run: pnpm build

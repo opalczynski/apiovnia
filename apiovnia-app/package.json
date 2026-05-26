@@ -13,7 +13,8 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
   },
-  "license": "MIT",
+  "author": "Sebastian Opałczyński",
+  "license": "SEE LICENSE IN ../LICENSE",
   "dependencies": {
     "@codemirror/commands": "^6.7.1",
     "@codemirror/lang-html": "^6.4.9",
