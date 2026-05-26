@@ -110,3 +110,11 @@ tmp/
 *.bak
 *.orig
 *.rej
+
+# -----------------------------------------------------------------------------
+# Author's local working notes — mixed PL/EN, no filter, never committed.
+# Wiped from git history on 2026-05-26 via `git filter-repo --invert-paths
+# --path plan.md` (backup at tag `backup/pre-plan-purge-2026-05-26`).
+# Keep a side copy somewhere if you care about the history of this file.
+# -----------------------------------------------------------------------------
+plan.md
