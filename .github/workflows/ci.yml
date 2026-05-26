@@ -40,10 +40,11 @@ jobs:
             wget \
             file
 
-      - name: Install Rust toolchain (stable + clippy)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+      # Toolchain version + clippy/rustfmt components come from
+      # rust-toolchain.toml at the repo root. Calling `rustup show` makes
+      # rustup install the pinned toolchain before any cargo step runs.
+      - name: Install Rust toolchain (per rust-toolchain.toml)
+        run: rustup show
 
       - name: Cache cargo registry + build
         uses: Swatinem/rust-cache@v2

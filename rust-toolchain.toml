@@ -1,0 +1,11 @@
+# Pin the Rust toolchain for the whole repo. Local dev (via rustup) and CI
+# (via dtolnay/rust-toolchain or by reading this file) end up on the same
+# version, so clippy lint deltas between releases can't surprise one side
+# and not the other.
+#
+# Bump deliberately — read the release notes for any newly-promoted lints
+# before flipping the channel forward.
+[toolchain]
+channel = "1.95.0"
+components = ["clippy", "rustfmt"]
+profile = "minimal"
