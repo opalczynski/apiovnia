@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Apiovnia OG image. 1200x630 — Twitter/X / Discord / Slack accept SVG; LinkedIn does not.
+     If you need a PNG, rasterise this with: rsvg-convert -w 1200 og-image.svg > og-image.png -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1F1714" />
+      <stop offset="100%" stop-color="#0B0908" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.18" />
+      <stop offset="60%" stop-color="#F59E0B" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+
+  <!-- Bottom amber hairline -->
+  <rect x="0" y="628" width="1200" height="2" fill="#F59E0B" opacity="0.45" />
+
+  <!-- Mark + brand -->
+  <g transform="translate(96 156)">
+    <!-- Honeycomb mark, 160x160 -->
+    <g transform="scale(1.6)">
+      <polygon points="50,18 78,34 78,66 50,82 22,66 22,34" fill="none" stroke="#F59E0B" stroke-width="3" stroke-linejoin="round" />
+      <circle cx="50" cy="50" r="11" fill="url(#amber)" />
+      <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7" />
+    </g>
+  </g>
+
+  <!-- Brand mark text -->
+  <g font-family="'Inter', system-ui, -apple-system, sans-serif" fill="#ECECEC">
+    <text x="280" y="220" font-size="72" font-weight="700" letter-spacing="-3">Apiovnia</text>
+    <text x="280" y="280" font-size="26" font-weight="500" fill="#B5B5BC" letter-spacing="-0.3">
+      A local-first REST API client for solo devs.
+    </text>
+  </g>
+
+  <!-- Bullet list -->
+  <g font-family="'Inter', system-ui, -apple-system, sans-serif" fill="#7C7C84" font-size="22" font-weight="500">
+    <text x="280" y="380">·  One SQLite file · no cloud · no accounts · no telemetry</text>
+    <text x="280" y="416">·  Environments as per-request overrides — not variable soup</text>
+    <text x="280" y="452">·  Master-password encryption per environment (AES-256-GCM)</text>
+    <text x="280" y="488">·  Keyboard-first · ⌘P palette · ⌘K filter · ⌘↵ send</text>
+  </g>
+
+  <!-- Footer URL pill -->
+  <g transform="translate(96 542)">
+    <rect width="320" height="44" rx="22" ry="22" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-opacity="0.3" />
+    <text x="22" y="30" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17" fill="#F59E0B" font-weight="600">
+      github.com/opalczynski/apiovnia
+    </text>
+  </g>
+
+  <!-- Right-side decorative honeycomb -->
+  <g transform="translate(820 80)" opacity="0.18">
+    <polygon points="200,16 360,108 360,292 200,384 40,292 40,108" fill="none" stroke="#F59E0B" stroke-width="3" stroke-linejoin="round" />
+  </g>
+  <g transform="translate(950 320)" opacity="0.10">
+    <polygon points="120,10 220,68 220,180 120,238 20,180 20,68" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linejoin="round" />
+  </g>
+</svg>

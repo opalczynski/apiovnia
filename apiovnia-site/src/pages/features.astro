@@ -1,0 +1,442 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ScreenshotSlot from "../components/ScreenshotSlot.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// Snippets pre-built as HTML strings so `{...}` inside the code is text, not an Astro
+// expression. set:html injects them as raw markup with their j-* spans intact.
+const copyAsSnippets = [
+  {
+    name: "curl",
+    body: `curl -X POST <span class="j-string">'https://api.acme.dev/users'</span> \\
+  -H <span class="j-string">'Authorization: Bearer eyJhbGciOi…'</span> \\
+  -H <span class="j-string">'Content-Type: application/json'</span> \\
+  --data-raw <span class="j-string">'{"name":"Ada","role":"admin"}'</span>`,
+  },
+  {
+    name: "Python (requests)",
+    body: `import requests
+
+requests.post(
+    <span class="j-string">"https://api.acme.dev/users"</span>,
+    headers={<span class="j-string">"Authorization"</span>: <span class="j-string">"Bearer eyJhbGciOi…"</span>},
+    json={<span class="j-string">"name"</span>: <span class="j-string">"Ada"</span>, <span class="j-string">"role"</span>: <span class="j-string">"admin"</span>},
+)`,
+  },
+  {
+    name: "HTTPie",
+    body: `http POST <span class="j-string">'https://api.acme.dev/users'</span> \\
+  <span class="j-string">'Authorization:Bearer eyJhbGciOi…'</span> \\
+  <span class="j-string">name=Ada</span> <span class="j-string">role=admin</span>`,
+  },
+  {
+    name: "JavaScript (fetch)",
+    body: `await fetch(<span class="j-string">"https://api.acme.dev/users"</span>, {
+  method: <span class="j-string">"POST"</span>,
+  headers: {
+    <span class="j-string">"Authorization"</span>: <span class="j-string">"Bearer eyJhbGciOi…"</span>,
+    <span class="j-string">"Content-Type"</span>: <span class="j-string">"application/json"</span>,
+  },
+  body: JSON.stringify({ name: <span class="j-string">"Ada"</span>, role: <span class="j-string">"admin"</span> }),
+});`,
+  },
+  {
+    name: "PowerShell (Invoke-RestMethod)",
+    body: `Invoke-RestMethod <span class="j-string">'https://api.acme.dev/users'</span> \`
+  -Method POST \`
+  -Headers @{ <span class="j-string">'Authorization'</span> = <span class="j-string">'Bearer eyJhbGciOi…'</span> } \`
+  -ContentType <span class="j-string">'application/json'</span> \`
+  -Body (@{ name = <span class="j-string">'Ada'</span>; role = <span class="j-string">'admin'</span> } | ConvertTo-Json)`,
+  },
+];
+
+const toc = [
+  { id: "environments",    label: "Environments + overrides" },
+  { id: "encryption",      label: "Encrypted environments" },
+  { id: "palette",         label: "Command palette" },
+  { id: "copy-as",         label: "Copy as… (5 formats)" },
+  { id: "openapi",         label: "OpenAPI import + export" },
+  { id: "graphql",         label: "GraphQL" },
+  { id: "history",         label: "History panel" },
+  { id: "json-viewer",     label: "JSON viewer" },
+  { id: "themes",          label: "Themes" },
+  { id: "shortcuts",       label: "Keyboard shortcuts" },
+];
+---
+<BaseLayout
+  title="Features — Apiovnia"
+  description="Every feature in Apiovnia, in detail: environment overrides, master-password encryption, command palette, copy-as, OpenAPI import/export, GraphQL, history, custom JSON viewer, themes, keyboard shortcuts."
+>
+  <section class="page-head">
+    <div class="container">
+      <span class="eyebrow">Features</span>
+      <h1>Every rail, with the load-bearing details.</h1>
+      <p class="lead">
+        Apiovnia is small on purpose. Below is the entire surface — what each part does, why it works that way, and what was deliberately left out. If you scroll to the bottom and feel the list is short, the list is short. That's the feature.
+      </p>
+
+      <nav class="toc" aria-label="Sections">
+        {toc.map((t) => <a href={`#${t.id}`}>{t.label}</a>)}
+      </nav>
+    </div>
+  </section>
+
+  <hr class="glow-divider" />
+
+  <!-- ENVIRONMENTS -->
+  <section id="environments" class="feature">
+    <div class="container feature-grid">
+      <div class="feature-text">
+        <span class="eyebrow">Environments</span>
+        <h2>Overrides, not variable soup.</h2>
+        <p>
+          Every project gets its own list of environments — typically <code>dev</code> / <code>stage</code> / <code>prod</code>. One request, one base definition. Per (request, env), patch the fields that actually differ: URL, auth, a single header. The amber dot in the tab strip tells you which tabs carry overrides for the env you're looking at. You always know what's about to leave your machine.
+        </p>
+        <p>
+          Resolution order is fixed: <code>request &gt; env override &gt; base</code>. Headers and params overrides are <strong>full replacements</strong>, not per-key merges — explicit beats clever every time. The resolver is a pure function in <code>apiovnia-core</code> with 33 unit tests, so changing envs never changes execution behaviour outside the documented path.
+        </p>
+        <p>
+          And the <code>&#123;&#123;name&#125;&#125;</code> interpolation runs <em>after</em> the override merge, so an env variable can fill a hole left by an override — including inside encrypted values, decrypted in Rust before the request is built.
+        </p>
+      </div>
+      <ScreenshotSlot label="EnvOverridesTab — amber dot on the Overrides tab + per-field override editor" ratio="16 / 11" />
+    </div>
+  </section>
+
+  <!-- ENCRYPTION -->
+  <section id="encryption" class="feature alt">
+    <div class="container feature-grid reverse">
+      <ScreenshotSlot label="UnlockEnvModal — master password prompt with zxcvbn meter + 'cracking time' line" ratio="16 / 11" />
+      <div class="feature-text">
+        <span class="eyebrow">Encrypted environments</span>
+        <h2>Set a master password. Lock on quit.</h2>
+        <p>
+          Mark an env as encrypted. Pick a password. Once. From that moment, every variable value and every secret-bearing override field (auth tokens, anything in an <code>Authorization</code> or <code>Cookie</code> header) gets sealed with <strong>AES-256-GCM</strong>. Argon2id with OWASP 2024 baseline parameters derives the key. The <code>zxcvbn</code> meter shows you a live "cracking time" line — anywhere from <code>~3 days</code> to <code>~centuries</code> — with an explicit pro-user bypass for when you know what you're doing.
+        </p>
+        <p>
+          The decryption key never crosses the IPC boundary. The frontend sends a request ID + env ID; the resolver runs in Rust, decrypts in process, builds the wire request, and returns the response. Decrypted env override values are never logged.
+        </p>
+        <p>
+          Idle auto-lock is <strong>10 minutes</strong>, checked on every <code>with_key</code> access — leaving the unlock modal open doesn't extend a session. Locked envs trigger the unlock prompt automatically with a <code>retry</code> hook that re-runs the original Send / Copy / Export. 21 crypto tests.
+        </p>
+        <p>
+          The crypto is boring on purpose. Boring is what you want from crypto.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMAND PALETTE -->
+  <section id="palette" class="feature">
+    <div class="container feature-grid">
+      <div class="feature-text">
+        <span class="eyebrow">Command palette</span>
+        <h2>⌘ P — Spotlight for your API.</h2>
+        <p>
+          Custom fuzzy ranking across <strong>requests, collections, projects, and envs</strong> of the active project, plus actions. Switch projects, create a new request, copy any request as curl/Python/HTTPie/JavaScript/PowerShell, enable or disable encryption for a specific env, manually lock an env, open Settings, switch theme — all without leaving the keyboard.
+        </p>
+        <p>
+          The palette and Copy-as both share the same <code>load_env_context</code> helper as <code>execute_request</code>, so encrypted envs decrypt the same way and the unlock modal pops with auto-retry from any entry point.
+        </p>
+        <div class="kbd-list">
+          <span><span class="kbd">⌘ P</span> open palette</span>
+          <span><span class="kbd">⌘ K</span> focus left filter</span>
+          <span><span class="kbd">⌘ N</span> new request</span>
+          <span><span class="kbd">⌘ ↵</span> send</span>
+        </div>
+      </div>
+      <ScreenshotSlot label="CommandPalette — fuzzy results across requests + actions" ratio="16 / 11" />
+    </div>
+  </section>
+
+  <!-- COPY AS -->
+  <section id="copy-as" class="feature alt">
+    <div class="container">
+      <span class="eyebrow">Copy as…</span>
+      <h2>One request, five toolchains.</h2>
+      <p class="lead">
+        Right-click any request, or invoke from the palette. Full env override resolution, full <code>&#123;&#123;var&#125;&#125;</code> interpolation, full decryption of encrypted env values. The renderers live in <code>apiovnia-core::snippets</code> (43 unit tests covering methods, query encoding, auth flavours, every body type, multipart with file parts, and per-language escaping).
+      </p>
+
+      <div class="snippet-grid">
+        {copyAsSnippets.map((s) => (
+          <div class="snippet-card">
+            <h4>{s.name}</h4>
+            <pre><code set:html={s.body}></code></pre>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- OPENAPI -->
+  <section id="openapi" class="feature">
+    <div class="container feature-grid">
+      <div class="feature-text">
+        <span class="eyebrow">OpenAPI 3.x</span>
+        <h2>Import a spec. Export with secrets scrubbed.</h2>
+        <p>
+          Right-click a project → <strong>Import OpenAPI…</strong>. Apiovnia ingests YAML or JSON, <code>$ref</code>-resolves request body schemas, and synthesises dummy values from <code>properties</code> / <code>items</code> / <code>allOf</code> with format hints (<code>date-time</code>, <code>email</code>, <code>uuid</code>, <code>uri</code>). Multi-server specs become real <code>Environment</code>s, each with per-request URL overrides.
+        </p>
+        <p>
+          Right-click a collection → <strong>Export OpenAPI…</strong>. The exporter scrubs secrets with typed placeholders (<code>&lt;your-bearer-token&gt;</code>, <code>&lt;your-password&gt;</code>, <code>&lt;your-api-key&gt;</code>), infers per-request schemas into <code>components.schemas</code> with <code>$ref</code> links from the media type, and <strong>aborts on <code>(method, path)</code> collisions</strong> rather than producing a broken spec.
+        </p>
+        <p>
+          The whole flow is audited live in a persistent <strong>OpLog</strong> panel — bottom-right, no auto-dismiss, with collapsible warnings and a "Download log" button that writes a timestamped <code>.log</code> file. 56 unit tests + 1 integration test against the real Petstore spec.
+        </p>
+      </div>
+      <ScreenshotSlot label="OpLog panel — per-request rows, collapsible warnings, download button" ratio="16 / 11" />
+    </div>
+  </section>
+
+  <!-- GRAPHQL -->
+  <section id="graphql" class="feature alt">
+    <div class="container feature-grid reverse">
+      <ScreenshotSlot label="GraphQlEditor — split query + variables panes with JSON lint" ratio="16 / 11" />
+      <div class="feature-text">
+        <span class="eyebrow">GraphQL</span>
+        <h2>Per the GraphQL-over-HTTP spec.</h2>
+        <p>
+          Pick "GraphQL" as the body type. The editor splits into a syntax-highlighted query pane (query / mutation / subscription / fragment) and a JSON variables pane with parse-lint. The method picker is restricted to GET / POST while GraphQL is active — PUT / PATCH / DELETE are meaningless here.
+        </p>
+        <p>
+          <strong>POST</strong> ships the <code>&#123;query, variables&#125;</code> envelope as a JSON body — queries and mutations.<br />
+          <strong>GET</strong> moves <code>query</code> and <code>variables</code> into the URL query string — read-only queries, cacheable. Apiovnia folds the params into the URL before the request builder is invoked, so the body is never sent in the GET path.
+        </p>
+        <p>
+          GraphQL rides every existing rail. Env variables, per-env overrides, history, "Copy as…" (the snippet generator folds GraphQL → REST <em>before</em> dispatch — POST becomes a JSON body, GET becomes query params), all unchanged. The CodeMirror mode is a tiny hand-rolled <code>StreamLanguage</code> — no <code>cm6-graphql</code> dependency. Schema-introspection autocomplete is a deliberate follow-up.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="history" class="feature">
+    <div class="container feature-grid">
+      <div class="feature-text">
+        <span class="eyebrow">History</span>
+        <h2>The last 200 executions, one click away.</h2>
+        <p>
+          A slide-in panel from the left (toggle via the icon in the left-panel footer). Each row shows the status pill, timing, env badge, request/collection breadcrumb, and substring filter on top. Click a row to navigate to the originating request — even across projects — and rehydrate that saved response. The retention limit is configurable in Settings.
+        </p>
+      </div>
+      <ScreenshotSlot label="HistoryPanel — slide-in left, status pills + env badge + breadcrumb" ratio="16 / 11" />
+    </div>
+  </section>
+
+  <!-- JSON VIEWER -->
+  <section id="json-viewer" class="feature alt">
+    <div class="container feature-grid reverse">
+      <ScreenshotSlot label="JsonView — collapsible nodes + ⌘F search with next/prev nav + hover-copy" ratio="16 / 11" />
+      <div class="feature-text">
+        <span class="eyebrow">Response viewer</span>
+        <h2>Custom JSON tree. Not a re-skinned widget.</h2>
+        <p>
+          The Pretty tab renders JSON through a custom Svelte 5 component: collapsible nodes, line numbers, a fold control on every container, hover-copy per value, <code>⌘ F</code> in-tree search with next / prev navigation, and expand / collapse-all. For HTML / XML / plain text, the Pretty tab swaps to CodeMirror with the app's design-token theme.
+        </p>
+        <p>
+          The response side also has dedicated <strong>Headers</strong>, <strong>Request</strong> (the final URL, headers, and body sent on the wire — multipart preview reconstructed in RFC-7578 form because <code>reqwest</code> can't <code>try_clone()</code> streaming bodies), and <strong>Raw</strong> tabs.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- THEMES -->
+  <section id="themes" class="feature">
+    <div class="container">
+      <span class="eyebrow">Themes</span>
+      <h2>Five themes, applied live.</h2>
+      <p class="lead">
+        Settings (<span class="kbd">⌘ ,</span>) → Appearance. Each theme is a CSS-variable bundle — no JS theme engine, no flash of unstyled content, applied at module init.
+      </p>
+
+      <div class="theme-grid">
+        <div class="theme-chip apiovnia"><span class="dot"></span> apiovnia <small>amber default</small></div>
+        <div class="theme-chip atomic"><span class="dot"></span> atomic-dark <small>monochrome</small></div>
+        <div class="theme-chip tokyo"><span class="dot"></span> tokyo-night <small>blue-purple</small></div>
+        <div class="theme-chip monokai"><span class="dot"></span> monokai <small>warm classic</small></div>
+        <div class="theme-chip light"><span class="dot"></span> light <small>for daylight</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHORTCUTS -->
+  <section id="shortcuts" class="feature alt">
+    <div class="container">
+      <span class="eyebrow">Keyboard</span>
+      <h2>Built for muscle memory.</h2>
+      <table class="kbd-table">
+        <tbody>
+          <tr><td><span class="kbd">⌘ P</span></td><td>Open the command palette</td></tr>
+          <tr><td><span class="kbd">⌘ K</span></td><td>Focus the left-panel filter</td></tr>
+          <tr><td><span class="kbd">⌘ N</span></td><td>New request</td></tr>
+          <tr><td><span class="kbd">⌘ ↵</span></td><td>Send the current request</td></tr>
+          <tr><td><span class="kbd">⌘ 1</span> / <span class="kbd">⌘ 2</span> / <span class="kbd">⌘ 3</span></td><td>Focus left filter / middle filter / URL bar</td></tr>
+          <tr><td><span class="kbd">⌘ ,</span></td><td>Open Settings</td></tr>
+          <tr><td><span class="kbd">⌘ F</span></td><td>Search inside the Pretty JSON tree</td></tr>
+        </tbody>
+      </table>
+      <p class="muted small">
+        On Linux and Windows, <span class="kbd">Ctrl</span> stands in for <span class="kbd">⌘</span>.
+      </p>
+    </div>
+  </section>
+
+  <hr class="glow-divider" />
+
+  <section class="next-up">
+    <div class="container">
+      <span class="eyebrow">Things Apiovnia will not become</span>
+      <h2>The list is the feature.</h2>
+      <p>
+        No pre-request scripts. No response test assertions. No team workspaces. No sync. No browser version. No auto-updater. No mobile. Drag-to-reorder is parked. The longer this list grows, the more useful Apiovnia stays.
+      </p>
+      <p>
+        WebSocket, SSE, gRPC, and GraphQL <em>were</em> once on this list. GraphQL has shipped. SSE and MCP are queued. The rest will stay deferred until a real reason — not a roadmap reason — appears. <a href={`${base}/roadmap`}>See where things stand →</a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .page-head {
+    padding: var(--space-9) 0 var(--space-7);
+  }
+  .page-head h1 { margin-top: var(--space-4); }
+  .lead {
+    margin-top: var(--space-5);
+    max-width: 760px;
+    font-size: 17px;
+    color: var(--fg-dim);
+  }
+  .toc {
+    margin-top: var(--space-6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .toc a {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--fg-dim);
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+  .toc a:hover { color: var(--fg); border-color: var(--border-strong); background: var(--hover); }
+
+  .feature {
+    padding: var(--space-8) 0;
+    scroll-margin-top: 72px;
+  }
+  .feature.alt { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .feature h2 { margin-top: var(--space-3); }
+  .feature p { margin-top: var(--space-4); max-width: 60ch; }
+  .feature strong { color: var(--fg); font-weight: 600; }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-7);
+    align-items: center;
+  }
+  .feature-grid.reverse > :first-child { order: 0; }
+  @media (max-width: 860px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .feature-grid.reverse > :first-child { order: 1; }
+  }
+
+  .kbd-list {
+    margin-top: var(--space-5);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+    font-size: 13px;
+    color: var(--fg-dim);
+  }
+
+  /* Copy-as grid */
+  .snippet-grid {
+    margin-top: var(--space-6);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: var(--space-4);
+  }
+  .snippet-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: var(--space-4);
+  }
+  .snippet-card h4 {
+    font: 600 11px/1 var(--mono);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-3);
+  }
+  .snippet-card pre {
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    font-size: 12px;
+  }
+
+  /* Theme chips */
+  .theme-grid {
+    margin-top: var(--space-6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+  .theme-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--r-ctrl);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--fg);
+  }
+  .theme-chip .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .theme-chip small { color: var(--fg-muted); font-weight: 400; font-size: 11.5px; }
+  .theme-chip.apiovnia .dot { background: #F59E0B; }
+  .theme-chip.atomic   .dot { background: #ECECEC; }
+  .theme-chip.tokyo    .dot { background: #7AA2F7; }
+  .theme-chip.monokai  .dot { background: #F92672; }
+  .theme-chip.light    .dot { background: #FFFFFF; border: 1px solid var(--border-strong); }
+
+  /* Shortcut table */
+  .kbd-table {
+    margin-top: var(--space-5);
+    width: 100%;
+    max-width: 620px;
+    border-collapse: collapse;
+  }
+  .kbd-table td {
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border);
+    color: var(--fg-dim);
+    font-size: 13.5px;
+  }
+  .kbd-table td:first-child { width: 200px; padding-right: var(--space-5); }
+  .kbd-table tr:last-child td { border-bottom: 0; }
+  .small { font-size: 12.5px; }
+  .muted { color: var(--fg-muted); }
+
+  .next-up {
+    padding: var(--space-7) 0;
+  }
+  .next-up h2 { margin-top: var(--space-3); }
+  .next-up p {
+    margin-top: var(--space-4);
+    max-width: 720px;
+  }
+  .next-up em { color: var(--accent); font-style: italic; font-weight: 500; }
+</style>

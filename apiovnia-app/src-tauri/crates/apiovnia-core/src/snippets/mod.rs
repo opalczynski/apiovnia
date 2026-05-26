@@ -12,7 +12,8 @@
 
 use serde::Deserialize;
 
-use crate::model::{ApiKeyLocation, AuthConfig, KeyValue, Request};
+use crate::graphql::GraphQlBody;
+use crate::model::{ApiKeyLocation, AuthConfig, BodyType, HttpMethod, KeyValue, Request};
 
 pub mod curl;
 pub mod httpie;
@@ -41,8 +42,37 @@ pub enum SnippetFormat {
 impl SnippetFormat {
     /// Dispatch to the right generator. The single public entry point —
     /// IPC, palette, and context menu all funnel through here.
+    ///
+    /// A `BodyType::GraphQl` request is folded into a plain REST request
+    /// first, so every generator stays purely REST-shaped and never has to
+    /// know GraphQL exists: a `POST` becomes a JSON body of the
+    /// `{query, variables}` envelope; a `GET` moves `query`/`variables` into
+    /// the query string (GraphQL-over-HTTP spec).
     #[must_use]
     pub fn render(self, req: &Request) -> String {
+        let folded;
+        let req = if req.body_type == BodyType::GraphQl {
+            let mut r = req.clone();
+            let gql = GraphQlBody::parse(&r.body_content);
+            if r.method == HttpMethod::Get {
+                for (k, v) in gql.to_get_query_params() {
+                    r.params.push(KeyValue {
+                        key: k.to_string(),
+                        value: v,
+                        enabled: true,
+                    });
+                }
+                r.body_type = BodyType::None;
+                r.body_content = String::new();
+            } else {
+                r.body_content = gql.to_wire_json();
+                r.body_type = BodyType::Json;
+            }
+            folded = r;
+            &folded
+        } else {
+            req
+        };
         match self {
             Self::Curl => to_curl(req),
             Self::PythonRequests => to_python_requests(req),
@@ -143,4 +173,78 @@ pub(crate) fn user_has_content_type(req: &Request) -> bool {
     req.headers
         .iter()
         .any(|h| h.enabled && h.key.eq_ignore_ascii_case("content-type"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ids::{CollectionId, RequestId};
+    use crate::model::HttpMethod;
+
+    fn graphql_request() -> Request {
+        Request {
+            id: RequestId::new(),
+            collection_id: CollectionId::new(),
+            name: "List users".into(),
+            method: HttpMethod::Post,
+            url: "https://api.example.com/graphql".into(),
+            headers: vec![],
+            params: vec![],
+            body_type: BodyType::GraphQl,
+            body_content: serde_json::json!({
+                "query": "query Users($limit: Int) { users(limit: $limit) { id } }",
+                "variables": r#"{"limit":5}"#,
+            })
+            .to_string(),
+            auth: AuthConfig::None,
+            created_at: 0,
+            updated_at: 0,
+            sort_order: 0,
+        }
+    }
+
+    #[test]
+    fn render_folds_graphql_into_a_json_post_body() {
+        // Every format runs through the same fold — spot-check that the wire
+        // envelope (not the internal {query,variables}-as-strings shape) is
+        // what each generator emits.
+        let req = graphql_request();
+        let curl = SnippetFormat::Curl.render(&req);
+        assert!(
+            curl.contains(r#"{"query":"query Users($limit: Int) { users(limit: $limit) { id } }","variables":{"limit":5}}"#),
+            "curl should embed the GraphQL wire body, got: {curl}"
+        );
+        assert!(
+            curl.contains("Content-Type: application/json"),
+            "GraphQL POST should advertise JSON, got: {curl}"
+        );
+
+        // The other generators must not panic and must mention the operation.
+        for fmt in [
+            SnippetFormat::PythonRequests,
+            SnippetFormat::Httpie,
+            SnippetFormat::JavaScriptFetch,
+            SnippetFormat::PowerShell,
+        ] {
+            let out = fmt.render(&req);
+            assert!(out.contains("users(limit: $limit)"), "{fmt:?} → {out}");
+        }
+    }
+
+    #[test]
+    fn render_folds_graphql_get_into_query_params() {
+        // A GraphQL GET moves query/variables into the URL — no body.
+        let mut req = graphql_request();
+        req.method = HttpMethod::Get;
+        let curl = SnippetFormat::Curl.render(&req);
+        assert!(curl.contains("query="), "query should ride the URL, got: {curl}");
+        assert!(
+            curl.contains("variables=%7B%22limit%22%3A5%7D"),
+            "variables should be percent-encoded JSON in the URL, got: {curl}"
+        );
+        assert!(
+            !curl.contains("--data-raw"),
+            "a GraphQL GET must not carry a body, got: {curl}"
+        );
+    }
 }

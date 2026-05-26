@@ -1,0 +1,218 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const sections = [
+  { id: "install",   label: "Install & run" },
+  { id: "data-dir",  label: "Where the DB lives" },
+  { id: "first-run", label: "Your first request" },
+  { id: "envs",      label: "Environments + encryption" },
+  { id: "shortcuts", label: "Keyboard shortcuts" },
+  { id: "openapi",   label: "Import / export OpenAPI" },
+  { id: "troubleshoot", label: "Troubleshooting" },
+];
+---
+<BaseLayout
+  title="Docs — Apiovnia"
+  description="Getting started with Apiovnia: install, where the SQLite database lives, the first-request walkthrough, environments + encryption, OpenAPI import/export, troubleshooting."
+>
+  <section class="page-head">
+    <div class="container">
+      <span class="eyebrow">Docs</span>
+      <h1>Getting started.</h1>
+      <p class="lead">
+        Apiovnia is small enough that this one page should cover most of what you need. If something here is wrong, the README in the repo wins. If something is missing, open an issue.
+      </p>
+      <nav class="toc" aria-label="Sections">
+        {sections.map((s) => <a href={`#${s.id}`}>{s.label}</a>)}
+      </nav>
+    </div>
+  </section>
+
+  <hr class="glow-divider" />
+
+  <article class="doc">
+    <div class="container container-narrow">
+      <section id="install">
+        <h2>Install & run</h2>
+        <p>
+          Pre-built binaries land in Phase 14. Until then:
+        </p>
+        <pre><code>git clone https://github.com/opalczynski/apiovnia.git
+cd apiovnia/apiovnia-app
+pnpm install
+pnpm tauri:dev     # opens the native window with HMR</code></pre>
+        <p>
+          For a production bundle for your platform: <code>pnpm tauri:build</code>. Output lands in <code>src-tauri/target/release/bundle/</code>. See the <a href={`${base}/download`}>Download page</a> for prerequisites.
+        </p>
+      </section>
+
+      <section id="data-dir">
+        <h2>Where the database lives</h2>
+        <p>
+          Everything is one SQLite file under your platform's XDG data dir:
+        </p>
+        <ul class="kv">
+          <li><span class="kv-k">Linux</span><span class="kv-v"><code>~/.local/share/tech.trurl.apiovnia/apiovnia.db</code></span></li>
+          <li><span class="kv-k">macOS</span><span class="kv-v"><code>~/Library/Application Support/tech.trurl.apiovnia/apiovnia.db</code></span></li>
+          <li><span class="kv-k">Windows</span><span class="kv-v"><code>%APPDATA%\tech.trurl.apiovnia\apiovnia.db</code></span></li>
+        </ul>
+        <p>
+          You can <code>cp</code> it to back it up, <code>sqlite3</code> into it to inspect, or delete it for a fresh state. There's no cloud component. There's no account. There's a file. That's the whole storage layer.
+        </p>
+      </section>
+
+      <section id="first-run">
+        <h2>Your first request</h2>
+        <ol class="steps">
+          <li>Launch the app. On a fresh DB you'll see the onboarding overlay — pick <strong>Create your first project</strong>.</li>
+          <li>In the middle panel, create a <strong>Collection</strong>, then a <strong>Request</strong> inside it. The cascade auto-pick will select the new request for you.</li>
+          <li>Type the URL in the bar at the top. Pick a method. Add headers / params / body in the tabs below the URL.</li>
+          <li>Hit <span class="kbd">⌘ ↵</span> to send. The response viewer fills the right side — Pretty / Headers / Request / Raw tabs.</li>
+          <li>Use <span class="kbd">⌘ F</span> inside the Pretty tab to search the JSON tree.</li>
+        </ol>
+      </section>
+
+      <section id="envs">
+        <h2>Environments + encryption</h2>
+        <p>
+          Open the env picker in the URL bar (or run "Manage envs &amp; variables" from the palette) to create <code>dev</code> / <code>stage</code> / <code>prod</code> environments for the active project. Each env carries a list of variables you can reference via <code>&#123;&#123;name&#125;&#125;</code> anywhere — URL, headers, body, auth.
+        </p>
+        <p>
+          For per-request differences (a different host on <code>stage</code>, a different API key on <code>prod</code>), use the <strong>Overrides</strong> tab. A small amber dot marks any tab that carries overrides for the active env.
+        </p>
+        <h3>Encryption</h3>
+        <p>
+          Right-click an env (or use the palette) and pick <strong>Enable encryption for {`{env}`}</strong>. You'll be asked to set a master password — <code>zxcvbn</code> grades it live with a "cracking time" line, and there's an explicit bypass checkbox for pro users. Apiovnia uses Argon2id (OWASP 2024 baseline) to derive a key and AES-256-GCM to seal the variable values and secret-bearing override fields.
+        </p>
+        <p>
+          The decryption key never crosses the IPC boundary. Idle auto-lock fires after <strong>10 minutes</strong>. Locked envs trigger the unlock modal automatically — and the original Send / Copy / Export retries when the password is entered.
+        </p>
+      </section>
+
+      <section id="shortcuts">
+        <h2>Keyboard shortcuts</h2>
+        <table class="kbd-table">
+          <tbody>
+            <tr><td><span class="kbd">⌘ P</span></td><td>Open the command palette</td></tr>
+            <tr><td><span class="kbd">⌘ K</span></td><td>Focus the left-panel filter</td></tr>
+            <tr><td><span class="kbd">⌘ N</span></td><td>New request</td></tr>
+            <tr><td><span class="kbd">⌘ ↵</span></td><td>Send the current request</td></tr>
+            <tr><td><span class="kbd">⌘ 1</span> / <span class="kbd">⌘ 2</span> / <span class="kbd">⌘ 3</span></td><td>Focus left filter / middle filter / URL bar</td></tr>
+            <tr><td><span class="kbd">⌘ ,</span></td><td>Open Settings</td></tr>
+            <tr><td><span class="kbd">⌘ F</span></td><td>Search inside the Pretty JSON tree</td></tr>
+          </tbody>
+        </table>
+        <p class="muted small">On Linux and Windows, <span class="kbd">Ctrl</span> stands in for <span class="kbd">⌘</span>.</p>
+      </section>
+
+      <section id="openapi">
+        <h2>Import / export OpenAPI</h2>
+        <p>
+          Right-click a project → <strong>Import OpenAPI…</strong> to ingest a YAML or JSON spec. <code>$ref</code> request bodies are resolved and dummy values inferred from the schema. Multi-server specs become real <code>Environment</code>s with per-request URL overrides.
+        </p>
+        <p>
+          Right-click a collection → <strong>Export OpenAPI…</strong> to save it as YAML with secrets replaced by typed placeholders. The OpLog panel (bottom-right, no auto-dismiss) shows per-request rows + warnings and lets you download a timestamped <code>.log</code>.
+        </p>
+      </section>
+
+      <section id="troubleshoot">
+        <h2>Troubleshooting</h2>
+        <h3>I changed my mind about my master password</h3>
+        <p>
+          A first-class change-password flow lands with Phase 10. Until then, the safest path is the obvious one: unlock the env, copy variable values out, disable encryption, re-enable with a new password, paste values back. Not elegant. Honest about it.
+        </p>
+        <h3>"database is locked" error</h3>
+        <p>
+          SQLite is single-writer with a 5-second busy timeout. If you see this, it usually means a long migration or external <code>sqlite3</code> session is open against the DB. Close other readers and retry.
+        </p>
+        <h3>The dev window has no dock icon on Linux</h3>
+        <p>
+          That's a GNOME/KDE thing — the window manager associates icons via the installed <code>.desktop</code> file's <code>StartupWMClass</code>, which only exists after <code>pnpm tauri:build</code> + install. The dev window's icon itself is fine. Welcome to Linux.
+        </p>
+      </section>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .page-head { padding: var(--space-9) 0 var(--space-6); }
+  .page-head h1 { margin-top: var(--space-4); }
+  .lead { margin-top: var(--space-5); max-width: 720px; font-size: 17px; color: var(--fg-dim); }
+  .toc {
+    margin-top: var(--space-6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .toc a {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--fg-dim);
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+  .toc a:hover { color: var(--fg); border-color: var(--border-strong); background: var(--hover); }
+
+  .container-narrow { max-width: 800px; }
+  .doc { padding: var(--space-7) 0 var(--space-9); }
+  .doc section { padding: var(--space-7) 0; border-bottom: 1px dashed var(--border); scroll-margin-top: 72px; }
+  .doc section:last-child { border-bottom: 0; }
+  .doc h2 { font-size: 26px; }
+  .doc h3 { margin-top: var(--space-5); font-size: 17px; color: var(--fg); }
+  .doc p { margin-top: var(--space-4); }
+  .doc pre { margin-top: var(--space-4); }
+  .doc strong { color: var(--fg); font-weight: 600; }
+  pre .muted { color: var(--fg-faint); }
+
+  .kv {
+    margin-top: var(--space-4);
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  .kv li {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: var(--space-3);
+    padding: 8px 0;
+    border-top: 1px dashed var(--border);
+    font-size: 13.5px;
+    color: var(--fg-dim);
+  }
+  .kv-k { color: var(--fg-muted); font-weight: 500; }
+
+  .steps {
+    margin-top: var(--space-4);
+    padding-left: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    color: var(--fg-dim);
+  }
+  .steps li::marker { color: var(--accent); font-weight: 600; }
+  .steps strong { color: var(--fg); }
+
+  .kbd-table {
+    margin-top: var(--space-4);
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .kbd-table td {
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border);
+    color: var(--fg-dim);
+    font-size: 13.5px;
+  }
+  .kbd-table td:first-child { width: 200px; padding-right: var(--space-5); }
+  .kbd-table tr:last-child td { border-bottom: 0; }
+  .small { font-size: 12.5px; margin-top: var(--space-4); }
+  .muted { color: var(--fg-muted); }
+</style>

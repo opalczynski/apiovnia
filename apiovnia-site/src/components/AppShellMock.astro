@@ -1,0 +1,457 @@
+---
+import Logo from "./Logo.astro";
+// Static CSS mock of the Apiovnia app shell. Used as the hero visual so the landing reads
+// "this is what you'll get" without needing real PNG screenshots. Tokens are imported from
+// global.css, so the look stays in lockstep with the actual app.
+---
+<div class="shell" role="img" aria-label="Apiovnia app preview — three-panel layout with projects, requests and response viewer">
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="traffic">
+      <span class="tl r"></span>
+      <span class="tl y"></span>
+      <span class="tl g"></span>
+    </div>
+    <div class="brand">
+      <Logo size={16} />
+      <span>Apiovnia</span>
+    </div>
+    <div class="crumbs">
+      <span class="muted">acme-api</span>
+      <span class="sep">/</span>
+      <span class="muted">Auth</span>
+      <span class="sep">/</span>
+      <span>Login</span>
+    </div>
+    <div class="searchbox">
+      <span class="muted">Search…</span>
+      <span class="kbd">⌘ P</span>
+    </div>
+  </div>
+
+  <div class="columns">
+    <!-- Projects + Collections panel -->
+    <aside class="col left">
+      <div class="seclabel">Projects</div>
+      <div class="row active"><span class="dot" style="background: var(--accent)"></span> acme-api</div>
+      <div class="row"><span class="dot"></span> stripe-sandbox</div>
+      <div class="row"><span class="dot"></span> openai-experiments</div>
+
+      <div class="seclabel mt">Collections</div>
+      <div class="row active">Auth</div>
+      <div class="row">Users</div>
+      <div class="row">Webhooks</div>
+      <div class="row">Billing</div>
+
+      <div class="footer-mini">
+        <span class="muted">prod</span>
+        <span class="lock" aria-hidden="true">⚿</span>
+      </div>
+    </aside>
+
+    <!-- Requests panel -->
+    <aside class="col mid">
+      <div class="filterbar">
+        <span class="muted">Filter…</span>
+        <span class="kbd">⌘ K</span>
+      </div>
+      <div class="req-row active">
+        <span class="method POST">POST</span>
+        <span class="req-name">/auth/login</span>
+      </div>
+      <div class="req-row">
+        <span class="method POST">POST</span>
+        <span class="req-name">/auth/refresh</span>
+      </div>
+      <div class="req-row">
+        <span class="method GET">GET</span>
+        <span class="req-name">/auth/me</span>
+      </div>
+      <div class="req-row">
+        <span class="method DELETE">DEL</span>
+        <span class="req-name">/auth/session</span>
+      </div>
+      <div class="req-row">
+        <span class="method GET">GET</span>
+        <span class="req-name">/auth/providers</span>
+      </div>
+    </aside>
+
+    <!-- Editor + response -->
+    <section class="col right">
+      <!-- URL bar -->
+      <div class="urlbar">
+        <span class="method POST">POST</span>
+        <span class="url">https://api.acme.dev/auth/login</span>
+        <span class="env-pill">
+          <span class="env-dot"></span>
+          prod
+          <span class="env-lock">⚿</span>
+        </span>
+        <span class="send-btn">Send <span class="kbd dark">⌘ ↵</span></span>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tabs">
+        <span class="tab">Params <span class="count">0</span></span>
+        <span class="tab">Headers <span class="count">2</span></span>
+        <span class="tab active">Body</span>
+        <span class="tab">Auth</span>
+        <span class="tab">Overrides <span class="dot-amber"></span></span>
+      </div>
+
+      <!-- Body / response split -->
+      <div class="split">
+        <pre class="bodybox"><code><span class="j-punct">&#123;</span>
+  <span class="j-key">"email"</span><span class="j-punct">:</span> <span class="j-string">"&#123;&#123;email&#125;&#125;"</span><span class="j-punct">,</span>
+  <span class="j-key">"password"</span><span class="j-punct">:</span> <span class="j-string">"&#123;&#123;password&#125;&#125;"</span>
+<span class="j-punct">&#125;</span></code></pre>
+
+        <div class="resp">
+          <div class="resp-head">
+            <span class="status ok">200 OK</span>
+            <span class="metric">142 ms</span>
+            <span class="metric">847 B</span>
+          </div>
+          <pre class="jsoncode"><code><span class="j-punct">&#123;</span>
+  <span class="j-key">"token"</span><span class="j-punct">:</span> <span class="j-string">"eyJhbGciOi…"</span><span class="j-punct">,</span>
+  <span class="j-key">"expires_in"</span><span class="j-punct">:</span> <span class="j-number">3600</span><span class="j-punct">,</span>
+  <span class="j-key">"user"</span><span class="j-punct">:</span> <span class="j-punct">&#123;</span>
+    <span class="j-key">"id"</span><span class="j-punct">:</span> <span class="j-number">42</span><span class="j-punct">,</span>
+    <span class="j-key">"verified"</span><span class="j-punct">:</span> <span class="j-bool">true</span>
+  <span class="j-punct">&#125;</span>
+<span class="j-punct">&#125;</span></code></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<style>
+  .shell {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 60px 120px -40px rgba(0, 0, 0, 0.6),
+      0 30px 60px -30px rgba(245, 158, 11, 0.25);
+    font-size: 11.5px;
+  }
+
+  /* Title bar */
+  .titlebar {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .traffic { display: flex; gap: 6px; }
+  .tl {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 0.5px solid rgba(0, 0, 0, 0.3);
+    display: inline-block;
+  }
+  .tl.r { background: #FF5F57; }
+  .tl.y { background: #FEBC2E; }
+  .tl.g { background: #28C840; }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .crumbs {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg-dim);
+  }
+  .crumbs .sep { color: var(--fg-faint); }
+  .crumbs .muted { color: var(--fg-muted); }
+  .searchbox {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: var(--r-ctrl);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg-faint);
+    min-width: 220px;
+  }
+  .searchbox .muted { color: var(--fg-faint); flex: 1; }
+
+  /* Columns */
+  .columns {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 200px 220px 1fr;
+    min-height: 0;
+  }
+  .col {
+    border-right: 1px solid var(--border);
+    padding: 8px 6px;
+    overflow: hidden;
+  }
+  .col:last-child { border-right: 0; }
+  .col.right { padding: 0; display: flex; flex-direction: column; }
+
+  .seclabel {
+    font: 600 9.5px/1 var(--ui);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--fg-faint);
+    padding: 6px 8px 4px;
+  }
+  .seclabel.mt { margin-top: 8px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 5px;
+    color: var(--fg-dim);
+    position: relative;
+  }
+  .row .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--fg-faint);
+  }
+  .row.active {
+    background: var(--selected);
+    color: var(--fg);
+  }
+  .row.active::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 4px; bottom: 4px;
+    width: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .footer-mini {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--fg-faint);
+    font-size: 10.5px;
+  }
+  .footer-mini .lock { color: var(--accent); }
+
+  /* Requests panel */
+  .filterbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 26px;
+    padding: 0 8px;
+    margin: 0 2px 6px;
+    border-radius: var(--r-ctrl);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--fg-faint);
+  }
+  .req-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 5px;
+    color: var(--fg-dim);
+    position: relative;
+  }
+  .req-row.active {
+    background: var(--selected);
+    color: var(--fg);
+  }
+  .req-row.active::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 4px; bottom: 4px;
+    width: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .req-name {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Right column */
+  .urlbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .url {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-ctrl);
+    padding: 6px 10px;
+  }
+  .env-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: var(--r-ctrl);
+    border: 1px solid var(--accent-bd);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .env-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+  }
+  .env-lock { font-size: 10px; opacity: 0.8; }
+  .send-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 12px;
+    border-radius: var(--r-ctrl);
+    background: linear-gradient(180deg, #F5A623 0%, #E08F0B 100%);
+    border: 1px solid #C57E07;
+    color: var(--on-accent);
+    font-weight: 600;
+    font-size: 11.5px;
+  }
+  .send-btn .kbd.dark {
+    background: rgba(0, 0, 0, 0.15);
+    border-color: rgba(0, 0, 0, 0.2);
+    color: var(--on-accent);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--border);
+    padding: 0 8px;
+  }
+  .tab {
+    height: 30px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg-muted);
+    font-size: 11px;
+    font-weight: 500;
+    position: relative;
+  }
+  .tab.active { color: var(--fg); }
+  .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 8px; right: 8px; bottom: -1px;
+    height: 1px;
+    background: var(--accent);
+  }
+  .tab .count {
+    font-size: 9.5px;
+    color: var(--fg-faint);
+    background: var(--surface-2);
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+  .tab .dot-amber {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+  }
+
+  .split {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 0;
+  }
+  .bodybox,
+  .jsoncode {
+    margin: 0;
+    padding: 12px 14px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+  }
+  .bodybox { border-right: 1px solid var(--border); }
+  .resp {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .resp-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font: 500 11px/1 var(--mono);
+    color: var(--fg-muted);
+  }
+
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg-muted);
+    font: 500 10px/1 var(--mono);
+  }
+
+  @media (max-width: 860px) {
+    .shell { font-size: 10.5px; aspect-ratio: 4 / 3; }
+    .columns { grid-template-columns: 0 0 1fr; }
+    .col.left, .col.mid { display: none; }
+    .crumbs { display: none; }
+    .searchbox { min-width: 0; padding: 0 6px; }
+  }
+</style>

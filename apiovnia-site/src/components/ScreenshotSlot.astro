@@ -1,0 +1,67 @@
+---
+// Placeholder for a real screenshot. When real PNGs land in /public, swap the inner
+// markup for <img src={`${base}/screens/<file>.png`} … />. The slot keeps a stable
+// aspect ratio + amber-tinted dark background so layouts don't shift on swap.
+interface Props {
+  label: string;
+  caption?: string;
+  ratio?: string; // CSS aspect-ratio expression
+}
+const { label, caption, ratio = "16 / 10" } = Astro.props;
+---
+<figure class="slot">
+  <div class="slot-box" style={`aspect-ratio: ${ratio};`}>
+    <div class="slot-inner">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <circle cx="9" cy="11" r="1.5" />
+        <path d="m21 16-4-4-7 7" />
+      </svg>
+      <span class="slot-label">{label}</span>
+      <span class="slot-hint">screenshot to be added</span>
+    </div>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .slot { margin: 0; }
+  .slot-box {
+    width: 100%;
+    border: 1px dashed var(--accent-bd);
+    border-radius: var(--r-card);
+    background:
+      radial-gradient(50% 60% at 50% 30%, rgba(245, 158, 11, 0.06) 0%, transparent 70%),
+      var(--surface);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+  .slot-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg-muted);
+    text-align: center;
+    padding: var(--space-4);
+  }
+  .slot-inner svg { color: var(--accent); opacity: 0.85; }
+  .slot-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fg-dim);
+  }
+  .slot-hint {
+    font: 500 10.5px/1 var(--mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+  }
+  figcaption {
+    margin-top: var(--space-3);
+    text-align: center;
+    color: var(--fg-faint);
+    font-size: 12.5px;
+  }
+</style>

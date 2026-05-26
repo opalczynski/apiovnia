@@ -1,0 +1,29 @@
+---
+// Honeycomb mark — mid variant (amber outline hex + filled centre dot).
+// Same SVG as apiovnia-app's TitleBar / ProjectsPanel footer. Brand amber (#F59E0B) is
+// hardcoded on purpose — the logo never re-skins per theme on the desktop app either.
+interface Props {
+  size?: number;
+  title?: string;
+}
+const { size = 22, title = "Apiovnia" } = Astro.props;
+---
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width={size}
+  height={size}
+  viewBox="0 0 100 100"
+  aria-label={title}
+  role="img"
+>
+  <title>{title}</title>
+  <polygon
+    points="50,18 78,34 78,66 50,82 22,66 22,34"
+    fill="none"
+    stroke="#F59E0B"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
+  <circle cx="50" cy="50" r="11" fill="#F59E0B" />
+  <ellipse cx="46" cy="46" rx="3" ry="2" fill="#FBBF24" opacity="0.7" />
+</svg>

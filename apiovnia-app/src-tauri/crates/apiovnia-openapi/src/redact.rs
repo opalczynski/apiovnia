@@ -284,7 +284,9 @@ fn redact_body(
 ) {
     match body_type {
         BodyType::None | BodyType::Raw => {} // raw bytes — can't introspect safely
-        BodyType::Json => {
+        // GraphQL `body_content` is a `{query, variables}` JSON object — walk
+        // it like any JSON body (best-effort; variables stay as raw text).
+        BodyType::Json | BodyType::GraphQl => {
             if let Ok(mut v) = serde_json::from_str::<Value>(body_content) {
                 let count = redact_json_value(&mut v, &policy.extra_body_keywords);
                 if count > 0 {

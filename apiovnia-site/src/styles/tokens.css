@@ -1,0 +1,81 @@
+/*
+ * Apiovnia design tokens — mirror of apiovnia-app/src/app.css ":root" block.
+ * Keep these in sync if any token is added/renamed in the app. The site uses the
+ * same surfaces, accent, JSON colours and density values so visual parity is automatic.
+ */
+:root {
+  /* Surfaces (warm near-black, never #000) */
+  --bg:         #0B0B0D;
+  --surface:    #111114;
+  --surface-2:  #16161A;
+  --elevated:   #1B1B20;
+  --hover:      #1E1E23;
+  --selected:   #232329;
+
+  /* Borders */
+  --border:        #1F1F22;
+  --border-strong: #2A2A2F;
+  --border-soft:   #18181C;
+
+  /* Text */
+  --fg:        #ECECEC;
+  --fg-dim:    #B5B5BC;
+  --fg-muted:  #7C7C84;
+  --fg-faint:  #54545B;
+
+  /* Accent — amber */
+  --accent:     #F59E0B;
+  --accent-hi:  #FBBF24;
+  --accent-dim: #B47208;
+  --accent-bg:  rgba(245, 158, 11, 0.10);
+  --accent-bd:  rgba(245, 158, 11, 0.30);
+  --on-accent:  #1A1102;
+
+  /* HTTP method colours */
+  --m-get:    #4ADE80;
+  --m-post:   #FBBF24;
+  --m-put:    #60A5FA;
+  --m-patch:  #A78BFA;
+  --m-delete: #F87171;
+  --m-other:  #94A3B8;
+
+  /* Status */
+  --ok:    #4ADE80;
+  --warn:  #FBBF24;
+  --err:   #F87171;
+
+  /* JSON syntax */
+  --j-key:    #E6E6E6;
+  --j-string: #A7E2B5;
+  --j-number: #E2C58A;
+  --j-bool:   #A0BFFB;
+  --j-null:   #C58FE6;
+  --j-punct:  #6E6E76;
+
+  /* Radii */
+  --r-badge: 4px;
+  --r-ctrl:  6px;
+  --r-panel: 8px;
+  --r-card:  12px;
+
+  /* Type */
+  --ui:   "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Density */
+  --row-h:    26px;
+  --row-h-lg: 30px;
+
+  /* Site-only — marketing scale and rhythm */
+  --container: 1120px;
+  --container-wide: 1280px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+}

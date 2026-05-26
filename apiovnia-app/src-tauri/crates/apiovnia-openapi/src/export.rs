@@ -17,6 +17,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use apiovnia_core::graphql::GraphQlBody;
 use apiovnia_core::model::{ApiKeyLocation, AuthConfig, BodyType, Collection, HttpMethod, Request};
 use oas3::spec::{
     Info, MediaType, MediaTypeExamples, ObjectOrReference, ObjectSchema, Operation, Parameter,
@@ -327,7 +328,8 @@ fn build_request_body(
         return None;
     }
     let content_type = match req.body_type {
-        BodyType::Json => "application/json",
+        // GraphQL goes over the wire as a JSON POST.
+        BodyType::Json | BodyType::GraphQl => "application/json",
         BodyType::Form => "application/x-www-form-urlencoded",
         BodyType::Multipart => "multipart/form-data",
         BodyType::Raw => content_type_from_headers(req).unwrap_or("text/plain"),
@@ -335,6 +337,11 @@ fn build_request_body(
     };
     let mt = match req.body_type {
         BodyType::Json => media_type_with_json_example(&req.body_content, op_id, request_schemas),
+        BodyType::GraphQl => media_type_with_json_example(
+            &GraphQlBody::parse(&req.body_content).to_wire_json(),
+            op_id,
+            request_schemas,
+        ),
         BodyType::Form | BodyType::Multipart => media_type_with_kv_example(&req.body_content),
         BodyType::Raw => media_type_with_text_example(&req.body_content),
         BodyType::None => unreachable!(),

@@ -6,6 +6,7 @@
 //!
 //! Everything in this crate must be unit-testable without a runtime.
 
+pub mod graphql;
 pub mod ids;
 pub mod interpolate;
 pub mod model;
@@ -14,6 +15,7 @@ pub mod snippets;
 pub mod time;
 
 pub use snippets::{to_curl, SnippetFormat};
+pub use graphql::GraphQlBody;
 pub use ids::{CollectionId, EnvironmentId, ProjectId, RequestId};
 pub use model::{
     AuthConfig, BodyType, Collection, Environment, EnvOverride, EnvVariable, HttpMethod, KeyValue,

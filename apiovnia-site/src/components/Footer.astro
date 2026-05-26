@@ -1,0 +1,62 @@
+---
+import Logo from "./Logo.astro";
+
+const year = new Date().getFullYear();
+---
+<footer class="ftr">
+  <div class="container ftr-row">
+    <div class="left">
+      <Logo size={18} />
+      <span class="name">Apiovnia</span>
+      <span class="dot">·</span>
+      <span class="muted">Local-first REST API client</span>
+    </div>
+    <div class="right">
+      <span class="muted">v0.1.0 · alpha</span>
+      <span class="dot">·</span>
+      <a href="https://github.com/opalczynski/apiovnia" target="_blank" rel="noopener">GitHub</a>
+      <span class="dot">·</span>
+      <a href="https://github.com/opalczynski/apiovnia/blob/main/README.md" target="_blank" rel="noopener">README</a>
+      <span class="dot">·</span>
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+  <div class="container subline">
+    <span class="muted">© {year} Sebastian Opałczyński. No cloud. No accounts. No telemetry.</span>
+  </div>
+</footer>
+
+<style>
+  .ftr {
+    margin-top: var(--space-9);
+    padding: var(--space-7) 0 var(--space-6);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .ftr-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    font-size: 13px;
+    color: var(--fg-dim);
+  }
+  .left, .right {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .name { color: var(--fg); font-weight: 600; }
+  .muted { color: var(--fg-muted); }
+  .dot { color: var(--fg-faint); }
+  .right a { color: var(--fg-dim); }
+  .right a:hover { color: var(--accent); }
+
+  .subline {
+    margin-top: var(--space-5);
+    font-size: 12px;
+    color: var(--fg-faint);
+  }
+</style>

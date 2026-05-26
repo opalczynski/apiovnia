@@ -1,0 +1,453 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AppShellMock from "../components/AppShellMock.astro";
+import FeatureCard from "../components/FeatureCard.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// Tiny inline-SVG icons reused on the landing — single colour, inherit currentColor.
+const i = {
+  db: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>`,
+  shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3Z"/><path d="M9 12l2 2 4-4"/></svg>`,
+  swap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h13l-3-3"/><path d="M21 17H8l3 3"/></svg>`,
+  kbd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h0M10 10h0M14 10h0M18 10h0M7 14h10"/></svg>`,
+  curly: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1"/><path d="M16 4h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></svg>`,
+  download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>`,
+  clip: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="12" height="16" rx="2"/><path d="M16 4V2H8v2"/><path d="M4 8v12a2 2 0 0 0 2 2h6"/></svg>`,
+  history: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5l3 2"/></svg>`,
+  palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/><circle cx="16" cy="14" r="1.2" fill="currentColor"/><path d="M12 21a3 3 0 0 0 3-3v-1h-3"/></svg>`,
+};
+
+const worksRaw = [
+  "Projects → Collections → Requests, stored in one SQLite file you can hold in your hand",
+  "Method, URL, params, headers, body (JSON, GraphQL, Form, Multipart, Raw), auth (Bearer, Basic, API key, none)",
+  "HTTP execution with reqwest + rustls, gzip, redirects, 30 s timeout, 2 MiB body cap",
+  "Response viewer with a custom JSON tree — collapsible nodes, ⌘F search, hover-copy per value, Pretty / Headers / Request / Raw tabs",
+  "Environments + per-(request, env) overrides + {{var}} interpolation, resolved in Rust before the wire request is built",
+  "Master-password encrypted environments — Argon2id + AES-256-GCM, 10 min idle auto-lock, zxcvbn meter with an explicit pro-user bypass",
+  "Command palette (⌘P) — fuzzy ranking across requests, collections, projects, envs, and actions",
+  "Copy as… curl / Python (requests) / HTTPie / JavaScript (fetch) / PowerShell — env-resolved, secrets-decrypted, idiomatic per language",
+  "OpenAPI 3.x import + export — $ref resolution, schema inference, secret scrubbing, persistent OpLog audit panel",
+  "History panel — last ~200 executions, filterable, click to navigate and rehydrate the saved response",
+  "Five themes — apiovnia (amber) / atomic-dark / tokyo-night / monokai / light, applied live without a reload",
+  "GraphQL — split query + variables editor, POST (JSON body) or GET (query string) per the GraphQL-over-HTTP spec",
+];
+
+// Pre-render the inline-code / shortcut markup in the frontmatter so the .astro template
+// doesn't have to embed a regex literal with `{` chars (the Astro parser counts brace
+// balance inside `{...}` expressions and miscounts a regex's `\{`).
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const works = worksRaw.map((line) =>
+  escapeHtml(line)
+    .replace(/\{\{(.+?)\}\}/g, "<code>$&</code>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/⌘[A-Z0-9↵\/,]+/g, (m) => `<span class="kbd">${m}</span>`)
+);
+
+// Snippet HTML is built in the frontmatter so the `{ … }` characters inside the code
+// stay as text (Astro treats `{` in template content as a JS expression delimiter).
+const snippetCurl = `<span class="muted"># curl</span>
+curl -X POST <span class="j-string">'https://api.acme.dev/auth/login'</span> \\
+  -H <span class="j-string">'Content-Type: application/json'</span> \\
+  -H <span class="j-string">'Authorization: Bearer eyJhbGciOi…'</span> \\
+  --data-raw <span class="j-string">'{"email":"{{email}}","password":"<span class="redact">&lt;your-password&gt;</span>"}'</span>`;
+
+const snippetPython = `<span class="muted"># Python (requests)</span>
+import requests
+
+requests.post(
+    <span class="j-string">"https://api.acme.dev/auth/login"</span>,
+    headers={<span class="j-string">"Authorization"</span>: <span class="j-string">"Bearer eyJhbGciOi…"</span>},
+    json={<span class="j-string">"email"</span>: <span class="j-string">"alice@acme.dev"</span>, <span class="j-string">"password"</span>: <span class="redact">"&lt;your-password&gt;"</span>},
+)`;
+
+const snippetJs = `<span class="muted"># JavaScript (fetch)</span>
+await fetch(<span class="j-string">"https://api.acme.dev/auth/login"</span>, {
+  method: <span class="j-string">"POST"</span>,
+  headers: {
+    <span class="j-string">"Content-Type"</span>: <span class="j-string">"application/json"</span>,
+    <span class="j-string">"Authorization"</span>: <span class="j-string">"Bearer eyJhbGciOi…"</span>,
+  },
+  body: JSON.stringify({ email: <span class="j-string">"alice@acme.dev"</span>, password: <span class="redact">"&lt;your-password&gt;"</span> }),
+});`;
+---
+<BaseLayout
+  title="Apiovnia — local-first REST API client for solo devs"
+  description="Apiovnia is a Tauri 2 desktop app. SQLite as the single source of truth. Environments as per-request overrides. Master-password encryption per environment. No cloud, no accounts, no telemetry."
+>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Local-first · Alpha · MIT</span>
+      <h1 class="hero-title">
+        An API client that<br />
+        <span class="accent">minds its own business.</span>
+      </h1>
+      <p class="hero-sub">
+        One SQLite file on your machine. Environments as per-request overrides, not variable soup. Any environment can be sealed behind a master password. No cloud, no accounts, no roadmap toward either.
+      </p>
+      <div class="hero-cta">
+        <a class="btn cta lg" href={`${base}/download`}>
+          <span set:html={i.download} style="width: 16px; height: 16px; display: inline-flex"></span>
+          Download
+        </a>
+        <a class="btn lg" href="#manifesto">Why this exists</a>
+        <a class="btn ghost lg" href="https://github.com/opalczynski/apiovnia" target="_blank" rel="noopener">View on GitHub →</a>
+      </div>
+      <div class="hero-meta">
+        <span><span class="status ok">182 tests</span> behind the resolver, the crypto, the snippets, and the GraphQL body</span>
+        <span class="dot">·</span>
+        <span>Linux · macOS · Windows</span>
+        <span class="dot">·</span>
+        <span>Free, forever</span>
+      </div>
+
+      <div class="hero-visual">
+        <AppShellMock />
+        <p class="visual-caption">
+          Three panels. Projects, requests, editor + response. The JSON viewer is custom — not a re-skinned tree.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MANIFESTO -->
+  <section id="manifesto" class="manifesto">
+    <div class="container container-narrow">
+      <span class="eyebrow">Why Apiovnia exists</span>
+
+      <div class="manifesto-body">
+        <p>
+          Every tool in this category starts the same way. Small, sharp, written by someone who needed it themselves. Postman in 2014. Insomnia in 2016. They were good. I remember.
+        </p>
+        <p>
+          Then comes the second act. An investor. A strategic partner. A pivot toward "the enterprise." The roadmap fills with features nobody asked for and empties of the ones that mattered. Cloud sync arrives, and with it an account you didn't want. The free tier shrinks. A "Team" tab appears. Five years in, the tool that solved your problem is now a problem of its own.
+        </p>
+        <p>
+          This isn't a story about bad companies. It's a story about a structure. Venture funding has a clock, and that clock has a sound, and the sound is <em>grow or die</em>. A REST client that stays small forever is a failed investment. So it doesn't stay small. It can't.
+        </p>
+        <p>
+          Apiovnia is built next to that structure, not against it. There's no investor to satisfy. There's no growth curve to bend. The whole thing is one SQLite file on your machine — yours to back up, inspect, copy, or delete. No account because there's nothing to log into. No cloud because there's nowhere your data needs to go.
+        </p>
+        <p>
+          The price is honest. Free, forever. No team workspaces, no sync, no browser version. If the work needs those things, Postman exists and it's still good at them. Apiovnia is for the other case — the request you'll send again in three years, the secret you don't want on someone else's server, the collection that should outlive the company that produced it.
+        </p>
+        <p class="manifesto-coda">
+          This is a small idea. It used to be the default.
+        </p>
+      </div>
+
+      <div class="manifesto-sign">
+        — Sebastian, somewhere with good coffee and bad Rust
+      </div>
+    </div>
+  </section>
+
+  <hr class="glow-divider" />
+
+  <!-- VALUE PROPS -->
+  <section class="props">
+    <div class="container">
+      <span class="eyebrow">Six positions, not features</span>
+      <h2>What "small forever" actually means.</h2>
+
+      <div class="props-grid">
+        <FeatureCard title="Your data, in a file you can rename." icon={i.db}>
+          <p>
+            Everything is one SQLite file in your XDG data dir. <code>cp</code> it for backup. <code>sqlite3</code> into it for inspection. Move it between machines on a USB stick. Delete it for a fresh start. The database isn't an API — it's a file. The way files used to be.
+          </p>
+        </FeatureCard>
+
+        <FeatureCard title="Environments without the variable maze." icon={i.swap}>
+          <p>
+            Define a request once. Per (request, env), patch only what differs — URL, auth, a single header. An amber dot marks any tab that carries an override. Resolution order is fixed: <code>request &gt; env override &gt; base</code>. Explicit beats clever, every time.
+          </p>
+        </FeatureCard>
+
+        <FeatureCard title="Secrets that live where you put them." icon={i.shield}>
+          <p>
+            Mark an env as encrypted, set a master password once. AES-256-GCM seals every variable value and every secret-bearing override field; Argon2id (OWASP 2024 baseline) derives the key. The key never crosses the IPC boundary. Idle auto-lock at 10 minutes. The crypto is boring on purpose.
+          </p>
+        </FeatureCard>
+
+        <FeatureCard title="Built for the keyboard you already own." icon={i.kbd}>
+          <p>
+            <span class="kbd">⌘ P</span> palette · <span class="kbd">⌘ K</span> sidebar filter ·
+            <span class="kbd">⌘ ↵</span> send · <span class="kbd">⌘ N</span> new request ·
+            <span class="kbd">⌘ 1/2/3</span> focus panel · <span class="kbd">⌘ ,</span> settings. The mouse is an option, not the path.
+          </p>
+        </FeatureCard>
+
+        <FeatureCard title={"{{var}} that resolves before it leaves Rust."} icon={i.curly}>
+          <p>
+            Reference env variables anywhere — URL, headers, body, auth. The resolver is a pure function in <code>apiovnia-core</code> with 33 unit tests. Decryption happens in-process before the wire request is built. The frontend never sees a plaintext secret.
+          </p>
+        </FeatureCard>
+
+        <FeatureCard title="A roadmap that ends." icon={i.palette}>
+          <p>
+            No pre-request scripts. No test assertions. No "workspaces." No sync. No mobile. The list of things Apiovnia won't become is longer than the list of things it will — and that's the whole point. <a href={`${base}/roadmap`}>See where it stops →</a>
+          </p>
+        </FeatureCard>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT WORKS TODAY -->
+  <section class="works">
+    <div class="container">
+      <div class="works-head">
+        <span class="eyebrow">What works on first launch</span>
+        <h2>The alpha is not a demo.</h2>
+        <p class="works-sub">
+          Every line below is wired to a Rust crate with tests. Apiovnia is in active development; it is not a slide deck. You can clone it, build it, and lose data in it today.
+        </p>
+      </div>
+
+      <ul class="check-list">
+        {works.map((line) => (
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 12l5 5 11-11" />
+            </svg>
+            <span set:html={line}></span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- COPY-AS PANEL — single proof-of-life feature highlighted -->
+  <section class="spotlight">
+    <div class="container">
+      <div class="spotlight-grid">
+        <div class="spotlight-text">
+          <span class="eyebrow">Spotlight · Copy as…</span>
+          <h2>One request leaves in five languages.</h2>
+          <p>
+            Right-click any request, or invoke from the palette. Copy as <strong>curl</strong>, <strong>Python <code>requests</code></strong>, <strong>HTTPie</strong>, <strong>JavaScript <code>fetch</code></strong>, or <strong>PowerShell <code>Invoke-RestMethod</code></strong>. Full env resolution. Full <code>&#123;&#123;var&#125;&#125;</code> interpolation. Full decryption of encrypted values. Multipart bodies rewritten to each language's native idiom — not the lowest common denominator.
+          </p>
+          <p>
+            If the env is locked, the unlock modal pops up and the copy retries when you've entered the password. You shouldn't have to think about that flow. You don't.
+          </p>
+          <div class="spotlight-cta">
+            <a class="btn" href={`${base}/features#copy-as`}>How it works →</a>
+          </div>
+        </div>
+        <div class="spotlight-visual">
+          <pre class="snippet"><code set:html={snippetCurl}></code></pre>
+          <pre class="snippet"><code set:html={snippetPython}></code></pre>
+          <pre class="snippet"><code set:html={snippetJs}></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLOSING CTA -->
+  <section class="close-cta">
+    <div class="container">
+      <div class="close-card">
+        <h2>Try it on the work you already have.</h2>
+        <p>One download. The database is a file. You can delete it any time. Nothing follows you.</p>
+        <div class="close-actions">
+          <a class="btn cta lg" href={`${base}/download`}>Download for your platform</a>
+          <a class="btn lg" href="https://github.com/opalczynski/apiovnia" target="_blank" rel="noopener">Star on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ---------- HERO ---------- */
+  .hero {
+    padding: var(--space-9) 0 var(--space-7);
+    position: relative;
+  }
+
+  /* ---------- MANIFESTO ---------- */
+  .manifesto {
+    padding: var(--space-9) 0;
+    background:
+      radial-gradient(60% 80% at 50% 0%, rgba(245, 158, 11, 0.04) 0%, transparent 70%),
+      var(--bg);
+  }
+  .container-narrow { max-width: 680px; margin: 0 auto; padding: 0 var(--space-5); }
+  .manifesto .eyebrow { display: block; margin-bottom: var(--space-5); }
+  .manifesto-body p {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--fg-dim);
+    margin-top: var(--space-5);
+  }
+  .manifesto-body p:first-child { margin-top: 0; }
+  .manifesto-body em {
+    color: var(--accent);
+    font-style: italic;
+    font-weight: 500;
+  }
+  .manifesto-coda {
+    margin-top: var(--space-6) !important;
+    padding-top: var(--space-5);
+    border-top: 1px dashed var(--border);
+    color: var(--fg) !important;
+    font-size: 18px !important;
+    font-weight: 500;
+  }
+  .manifesto-sign {
+    margin-top: var(--space-6);
+    font: italic 400 14px/1.4 var(--mono);
+    color: var(--fg-muted);
+    text-align: right;
+  }
+  .hero-title {
+    margin-top: var(--space-4);
+    font-weight: 700;
+  }
+  .accent { color: var(--accent); }
+  .hero-sub {
+    margin-top: var(--space-5);
+    max-width: 680px;
+    font-size: clamp(15px, 1.5vw, 18px);
+    color: var(--fg-dim);
+    line-height: 1.6;
+  }
+  .hero-cta {
+    margin-top: var(--space-6);
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .hero-meta {
+    margin-top: var(--space-5);
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--fg-muted);
+    font-size: 13px;
+  }
+  .hero-meta .dot { color: var(--fg-faint); }
+
+  .hero-visual {
+    margin-top: var(--space-8);
+  }
+  .visual-caption {
+    margin-top: var(--space-4);
+    text-align: center;
+    color: var(--fg-faint);
+    font-size: 13px;
+  }
+
+  /* ---------- VALUE PROPS ---------- */
+  .props {
+    padding: var(--space-9) 0;
+  }
+  .props h2 {
+    margin-top: var(--space-3);
+    max-width: 760px;
+  }
+  .props-grid {
+    margin-top: var(--space-7);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: var(--space-4);
+  }
+
+  /* ---------- WORKS ---------- */
+  .works { padding: var(--space-7) 0 var(--space-9); }
+  .works-head { max-width: 720px; }
+  .works-head h2 { margin-top: var(--space-3); }
+  .works-sub { margin-top: var(--space-4); }
+  .check-list {
+    margin-top: var(--space-6);
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-3) var(--space-6);
+  }
+  .check-list li {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    border-top: 1px dashed var(--border);
+    color: var(--fg-dim);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .check-list li svg {
+    color: var(--accent);
+    margin-top: 4px;
+  }
+
+  /* ---------- SPOTLIGHT ---------- */
+  .spotlight {
+    padding: var(--space-9) 0;
+    background:
+      radial-gradient(40% 60% at 100% 50%, rgba(245, 158, 11, 0.05) 0%, transparent 70%),
+      var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .spotlight-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: var(--space-7);
+    align-items: center;
+  }
+  .spotlight-text h2 { margin-top: var(--space-3); }
+  .spotlight-text p { margin-top: var(--space-4); }
+  .spotlight-text strong { color: var(--fg); font-weight: 600; }
+  .spotlight-cta { margin-top: var(--space-5); }
+  .spotlight-visual {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .snippet {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--fg-dim);
+    font-size: 12px;
+  }
+  .snippet .muted { color: var(--fg-faint); }
+  .snippet .redact {
+    color: var(--accent);
+    background: var(--accent-bg);
+    border-radius: 3px;
+    padding: 0 3px;
+  }
+
+  @media (max-width: 860px) {
+    .spotlight-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- CLOSE CTA ---------- */
+  .close-cta { padding: var(--space-7) 0 var(--space-9); }
+  .close-card {
+    background:
+      radial-gradient(40% 80% at 0% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 70%),
+      var(--surface);
+    border: 1px solid var(--accent-bd);
+    border-radius: var(--r-card);
+    padding: var(--space-7) var(--space-7);
+    text-align: center;
+  }
+  .close-card p {
+    margin-top: var(--space-3);
+    color: var(--fg-dim);
+    font-size: 15px;
+  }
+  .close-actions {
+    margin-top: var(--space-5);
+    display: flex;
+    justify-content: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+</style>
