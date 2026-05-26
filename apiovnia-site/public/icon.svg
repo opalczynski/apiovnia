@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-  Apiovnia app icon — honeycomb mark. Spec: design_artifacts/App Icon - Honeycomb Set.html
-  - 1024×1024 master canvas, 22.5% squircle radius.
-  - Background linear gradient #1F1714 → #0B0908 (top → bottom).
-  - 14% inner padding (so the 100×100 inner viewBox occupies the centre 72% × 72%).
-  - Full variant (used for ≥256px): outer faint hex ring + amber inner hex + filled centre dot + glint highlight.
+  Apiovnia app icon — honeycomb mark, full variant (used for ≥256px).
+  Mirrors apiovnia-app/src-tauri/icons/apiovnia.svg.
+  - 1024×1024 master canvas, 22.5% squircle radius
+  - Background linear gradient #1F1714 → #0B0908 (top → bottom)
+  - 14% inner padding (inner viewBox occupies the centre 72% × 72%)
+  - Outer faint hex ring + amber inner hex + filled centre dot + glint
 -->
 <svg
     xmlns="http://www.w3.org/2000/svg"
