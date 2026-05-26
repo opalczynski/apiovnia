@@ -1428,14 +1428,15 @@ Drobne zmiany z user-testów po Phase 9, plus dodanie ikony aplikacji.
 
 ### App icon (honeycomb)
 
-- **Master source**: `design_artifacts/icons/master/apiovnia-1024.png`
-  (z towarzyszącym `apiovnia.svg`) — przygotowany ręcznie wg designu z
-  `App Icon - Honeycomb Set.html`. Wcześniej próbowaliśmy renderować
-  z SVG przez ImageMagick + Inkscape — wyglądało źle (pomarańczowa
-  kropka w czarnym kwadracie zamiast hex'a), bo Inkscape w snapie ma
-  problemy z dostępem do plików. Użycie przygotowanego masteru z
-  designu jest jedyną wiarygodną ścieżką.
-- Cała generacja: `pnpm tauri icon design_artifacts/icons/master/apiovnia-1024.png`.
+- **Master source**: `apiovnia-app/src-tauri/icons/master/apiovnia-1024.png`
+  (z towarzyszącym `apiovnia.svg`) — przygotowany ręcznie wg specyfikacji
+  inline w nagłówku `apiovnia-app/src-tauri/icons/apiovnia.svg`. Wcześniej
+  próbowaliśmy renderować z SVG przez ImageMagick + Inkscape — wyglądało
+  źle (pomarańczowa kropka w czarnym kwadracie zamiast hex'a), bo Inkscape
+  w snapie ma problemy z dostępem do plików. Użycie przygotowanego masteru
+  PNG jest jedyną wiarygodną ścieżką.
+- Cała generacja (z katalogu `apiovnia-app/`):
+  `pnpm tauri icon src-tauri/icons/master/apiovnia-1024.png`.
   Tauri pluje ios/ + android/ + MSIX Square*Logo.png + StoreLogo.png — nie
   używamy ich (MVP target = macOS + Linux + Windows .ico bez Microsoft
   Store), więc kasujemy. Zostaje **minimalny zestaw**:

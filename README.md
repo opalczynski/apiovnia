@@ -99,7 +99,6 @@ Delete the file for a fresh state. There is nothing else to clean.
 │           ├── apiovnia-crypto/   # Argon2id + AES-256-GCM, zxcvbn password policy
 │           └── apiovnia-openapi/  # oas3 import/export, secret scrubbing, schema inference
 ├── apiovnia-site/            # Astro 5 landing + docs (deploys to GH Pages)
-├── design_artifacts/         # static HTML/JSX design canvas + tokens.css
 ├── instruction.md            # immutable product brief
 ├── plan.md                   # phased implementation plan + live progress log
 ├── CLAUDE.md                 # notes for Claude / future-me working in this repo

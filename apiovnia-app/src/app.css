@@ -10,11 +10,10 @@
 @import "@fontsource/jetbrains-mono/600.css";
 
 /* ================================================================
-   Apiovnia design tokens — ported from design_artifacts/tokens.css
+   Apiovnia design tokens — single source of truth for the app shell.
    ---------------------------------------------------------------
-   Token names mirror the design canvas. Components reference them via
-   `var(--token)` directly (compat with the artifact components) and
-   Tailwind v4 also exposes a subset as utilities through @theme below.
+   Components reference them via `var(--token)` directly; Tailwind v4
+   also exposes a subset as utilities through @theme below.
    ================================================================ */
 
 @theme {
@@ -374,8 +373,7 @@ body {
 }
 
 /* ----------------------------------------------------------------
-   Component primitives — direct port of design_artifacts/tokens.css
-   These are intentionally plain CSS to keep design-canvas parity.
+   Component primitives — plain CSS keyed to the design tokens above.
    ---------------------------------------------------------------- */
 
 /* Buttons */
@@ -775,8 +773,6 @@ body {
 
 /* ----------------------------------------------------------------
    JSON viewer (Phase 4) — custom renderer for response Pretty tab.
-   Ported from design_artifacts/tokens.css; the React mockup is in
-   design_artifacts/json-view.jsx.
    ---------------------------------------------------------------- */
 
 .jv {

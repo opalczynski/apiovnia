@@ -2,9 +2,8 @@
   JsonView — collapsible JSON renderer with syntax highlight, ⌘F search +
   next/prev navigation, hover-copy per value, and expand/collapse-all.
 
-  Ported from design_artifacts/json-view.jsx but rewritten for Svelte 5
-  runes. We render a flat list of "lines" so search/navigation can index
-  by line number without recursing the tree per keystroke.
+  We render a flat list of "lines" so search/navigation can index by line
+  number without recursing the tree per keystroke.
 
   The toolbar (search + counter + nav + expand/collapse all) is built in
   so the consumer just passes `data` (parsed JSON value) and we own the

@@ -13,11 +13,14 @@
 !.env.example
 
 # -----------------------------------------------------------------------------
-# Node / pnpm / Vite
+# Node / pnpm / Vite / Astro
 # -----------------------------------------------------------------------------
 node_modules/
 # Vite production bundle output
 apiovnia-app/dist/
+# Astro production bundle output + dev cache
+apiovnia-site/dist/
+.astro/
 # Vite resolved-config cache + timestamp probe files
 .vite/
 *.timestamp-*.mjs
