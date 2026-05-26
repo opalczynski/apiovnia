@@ -156,7 +156,7 @@
               <dt>Built with</dt>
               <dd>Tauri 2 · Rust · Svelte 5</dd>
               <dt>License</dt>
-              <dd>MIT (provisional)</dd>
+              <dd>PolyForm Noncommercial 1.0.0</dd>
             </dl>
           </div>
         {/if}
