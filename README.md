@@ -55,7 +55,13 @@ No pre-request scripts. No response test assertions. No team workspaces. No sync
 
 ### Pre-built binaries
 
-Coming with **Phase 14**. Watch [Releases](https://github.com/opalczynski/apiovnia/releases) — or build from source below.
+Grab the latest from [Releases](https://github.com/opalczynski/apiovnia/releases). Three platforms, three different stories about signing:
+
+| Platform | Format | Signing | First-launch UX |
+|---|---|---|---|
+| **Linux** | `.deb` / `.rpm` / `.AppImage` | n/a | Just works |
+| **macOS** | `.dmg` (universal: Apple Silicon + Intel) | **Developer ID + notarized** | Just works |
+| **Windows** | `.msi` | **Unsigned** — no plans to sign (EV cert cost doesn't make sense for a tool this size) | SmartScreen will block: click **More info → Run anyway** |
 
 ### Build from source
 
@@ -83,6 +89,26 @@ macOS: `~/Library/Application Support/tech.trurl.apiovnia/apiovnia.db`
 Windows: `%APPDATA%\tech.trurl.apiovnia\apiovnia.db`
 
 Delete the file for a fresh state. There is nothing else to clean.
+
+### Cutting a release (for me / future me)
+
+Releases are tag-driven. Merge whatever needs merging to `main`, then locally:
+
+```bash
+# Bump version in BOTH places (they're separate sources of truth):
+#   apiovnia-app/package.json#version
+#   apiovnia-app/src-tauri/tauri.conf.json#version
+# Then:
+git commit -am "release: v0.1.0"
+git tag v0.1.0
+git push && git push --tags
+```
+
+The `Release` workflow (`.github/workflows/release.yml`) picks up the tag, builds on three runners in parallel (Ubuntu / macOS / Windows), and creates a **draft GitHub Release** with the artifacts attached. Review, edit notes, publish.
+
+For alpha / beta / rc cycles, use `v0.1.0-alpha.1` style tags — they get marked as pre-release automatically.
+
+If one platform's build fails after a tag is already published, re-run via **Actions → Release → Run workflow** and pass the existing tag — the workflow will (re-)upload to the same draft release.
 
 ## Repo layout
 
