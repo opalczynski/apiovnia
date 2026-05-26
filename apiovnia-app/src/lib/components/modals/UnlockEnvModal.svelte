@@ -4,10 +4,9 @@
   callback (set by whoever opened the modal — typically the Send flow that
   bounced off `ENV_LOCKED`).
 
-  Layout mirrors `design_artifacts/artifact-unlock.jsx`: lock-icon header,
-  env summary card, password field with show/hide, Cancel + Unlock buttons.
-  We skip the artifact's blurred-shell backdrop — the real shell is right
-  there and the radial dim is enough context.
+  Layout: lock-icon header, env summary card, password field with show/hide,
+  Cancel + Unlock buttons. No backdrop blur — the real shell is right there
+  and the radial dim is enough context.
 -->
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";

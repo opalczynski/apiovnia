@@ -1,7 +1,6 @@
 /**
- * Lucide-style stroked icons as raw SVG path data.
- * Ported from design_artifacts/shared.jsx so component code can render via
- * <Icon d={IC.search} /> with no per-icon component file.
+ * Lucide-style stroked icons as raw SVG path data. Component code renders
+ * them via <Icon d={IC.search} /> — no per-icon component file.
  *
  * If the icon set grows past ~30 entries, swap in `lucide-svelte`.
  */
