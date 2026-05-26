@@ -1,0 +1,152 @@
+name: Release
+
+# Triggered by pushing a `v*` tag — the convention is: merge the release-prep
+# PR to main, then locally `git tag v0.1.0 && git push --tags`. The workflow
+# creates a *draft* Release on GitHub; we review and publish manually.
+#
+# Pre-release detection: tags containing alpha / beta / rc are marked as
+# pre-release automatically, so they don't show up as "latest" until promoted.
+#
+# `workflow_dispatch` is here for re-runs — if one platform fails after the
+# tag is already published, we can re-trigger the build for just that tag
+# without re-tagging the commit.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re-)build (e.g. v0.1.0-alpha.1)"
+        required: true
+
+# Two pushes of the same tag would race for the same draft release. Don't
+# cancel — let them queue, second one will just see the release already exists.
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+# `contents: write` lets tauri-action create the draft release + upload assets.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    strategy:
+      # Don't fail the whole matrix if one platform breaks — the other two
+      # still publish to the same draft release, and we can re-run the broken
+      # one via workflow_dispatch.
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-latest
+            label: Linux (.deb / .rpm / .AppImage)
+            args: ""
+            rust_targets: ""
+          - platform: macos-latest
+            label: macOS (universal .dmg, signed + notarized)
+            args: "--target universal-apple-darwin"
+            rust_targets: "aarch64-apple-darwin x86_64-apple-darwin"
+          - platform: windows-latest
+            label: Windows (.msi, unsigned)
+            args: ""
+            rust_targets: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tauri Linux system deps (webkit2gtk-4.1 etc.) — same set CI uses.
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libgtk-3-dev \
+            libssl-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file
+
+      # Toolchain channel + components come from rust-toolchain.toml.
+      # `rustup show` triggers install of the pinned toolchain.
+      - name: Install Rust toolchain (per rust-toolchain.toml)
+        run: rustup show
+
+      # Universal macOS build needs both architectures' standard libraries.
+      - name: Add Rust targets (macOS universal)
+        if: matrix.rust_targets != ''
+        run: rustup target add ${{ matrix.rust_targets }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apiovnia-app/pnpm-lock.yaml
+
+      - name: Cache cargo registry + build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apiovnia-app/src-tauri
+          # Bucket per OS — universal vs native builds differ enough that
+          # sharing a cache between them just causes recompiles.
+          key: ${{ matrix.platform }}-${{ matrix.args }}
+
+      - name: pnpm install
+        working-directory: apiovnia-app
+        run: pnpm install --frozen-lockfile
+
+      - name: Build + publish to draft Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # macOS signing — only effective on the macos-latest job.
+          # On Linux / Windows these env vars are present but ignored
+          # because tauri only consults them in the macOS codesign path.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        with:
+          projectPath: apiovnia-app
+          tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          releaseName: "Apiovnia v__VERSION__"
+          releaseBody: |
+            ## Install
+
+            ### Linux
+            - **`.deb`** — `sudo dpkg -i apiovnia_<version>_amd64.deb`
+            - **`.rpm`** — `sudo rpm -i apiovnia-<version>-1.x86_64.rpm`
+            - **`.AppImage`** — `chmod +x Apiovnia_<version>_amd64.AppImage && ./Apiovnia_<version>_amd64.AppImage`
+
+            ### macOS
+            Signed with Developer ID + notarized by Apple. Open the `.dmg`, drag into Applications, launch. No Gatekeeper warning.
+
+            ### Windows
+            **Unsigned alpha build.** Windows SmartScreen will block on first launch:
+            1. Double-click the `.msi`
+            2. SmartScreen: *"Windows protected your PC"* → click **More info** → **Run anyway**
+            3. Installer proceeds normally
+
+            ---
+
+            See [the website](https://opalczynski.github.io/apiovnia/) for what the app does. Local data lives in your XDG data dir; nothing leaves the machine.
+          releaseDraft: true
+          prerelease: ${{ contains(github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name, 'alpha') || contains(github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name, 'beta') || contains(github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name, 'rc') }}
+          args: ${{ matrix.args }}
