@@ -76,6 +76,7 @@
   const BODY_TYPES: { value: BodyType; label: string }[] = [
     { value: "none", label: "None" },
     { value: "json", label: "JSON" },
+    { value: "graphql", label: "GraphQL" },
     { value: "form", label: "Form" },
     { value: "raw", label: "Raw" },
   ];
@@ -313,7 +314,9 @@
             <CodeMirrorEditor
               value={ovr.bodyContent}
               onChange={(v) => patch("bodyContent", v)}
-              language={(ovr.bodyType ?? request.bodyType) === "json" ? "json" : "plain"}
+              language={["json", "graphql"].includes(ovr.bodyType ?? request.bodyType)
+                ? "json"
+                : "plain"}
             />
           </div>
         {/if}

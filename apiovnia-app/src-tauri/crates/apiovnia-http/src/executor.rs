@@ -61,6 +61,18 @@ impl Executor {
         let mut url = Url::parse(req.url.trim())?;
         attach_query_params(&mut url, &req.params);
 
+        // GraphQL-over-HTTP GET: the {query, variables} envelope rides the URL
+        // query string, not a body (spec — GET stays safe/idempotent, queries
+        // only). Must happen before the builder captures the URL below.
+        if req.body_type == BodyType::GraphQl && req.method == HttpMethod::Get {
+            let params = apiovnia_core::graphql::GraphQlBody::parse(&req.body_content)
+                .to_get_query_params_checked()
+                .map_err(ExecutionError::InvalidRequest)?;
+            for (k, v) in params {
+                url.query_pairs_mut().append_pair(k, &v);
+            }
+        }
+
         let method = method_to_reqwest(req.method);
 
         let mut builder = self.client.request(method.clone(), url.clone());
@@ -258,6 +270,29 @@ async fn apply_body(
                 .iter()
                 .any(|h| h.enabled && h.key.eq_ignore_ascii_case("content-type"));
             let b = builder.body(req.body_content.clone());
+            if needs_ct {
+                b.header(reqwest::header::CONTENT_TYPE, "application/json")
+            } else {
+                b
+            }
+        }
+        BodyType::GraphQl if req.method == HttpMethod::Get => {
+            // GraphQL-over-HTTP GET carries query/variables in the URL
+            // (folded in by `execute`) — no body on the request itself.
+            builder
+        }
+        BodyType::GraphQl => {
+            // POST-style GraphQL: a JSON body of the `{query, variables}`
+            // envelope. We validate the variables here so a malformed block
+            // surfaces as a clear error rather than a confusing 400.
+            let wire = apiovnia_core::graphql::GraphQlBody::parse(&req.body_content)
+                .to_wire_json_checked()
+                .map_err(ExecutionError::InvalidRequest)?;
+            let needs_ct = !req
+                .headers
+                .iter()
+                .any(|h| h.enabled && h.key.eq_ignore_ascii_case("content-type"));
+            let b = builder.body(wire);
             if needs_ct {
                 b.header(reqwest::header::CONTENT_TYPE, "application/json")
             } else {

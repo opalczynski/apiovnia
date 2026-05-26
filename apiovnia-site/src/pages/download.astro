@@ -1,0 +1,184 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const releases = "https://github.com/opalczynski/apiovnia/releases";
+
+const platforms = [
+  {
+    id: "linux",
+    name: "Linux",
+    formats: [".AppImage", ".deb"],
+    note: "Tested on Ubuntu 24.04. Other distros likely work — please open an issue if not.",
+    icon: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c2.21 0 4 2.24 4 5 0 1.65-.65 3.13-1.65 4.07.74.42 1.55 1.27 2.4 2.55C18.43 16.36 20 18.13 20 19.5c0 1.93-3.58 2.5-8 2.5s-8-.57-8-2.5c0-1.37 1.57-3.14 3.25-5.88.85-1.28 1.66-2.13 2.4-2.55C8.65 10.13 8 8.65 8 7c0-2.76 1.79-5 4-5Zm-2.5 5c0 .83.45 1.5 1 1.5s1-.67 1-1.5-.45-1.5-1-1.5-1 .67-1 1.5Zm3 0c0 .83.45 1.5 1 1.5s1-.67 1-1.5-.45-1.5-1-1.5-1 .67-1 1.5Z"/></svg>`,
+  },
+  {
+    id: "macos",
+    name: "macOS",
+    formats: [".dmg"],
+    note: "Universal build (Apple Silicon + Intel). Notarisation lands with Phase 14.",
+    icon: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.5 2c-1.6.1-3.4 1.2-4.5 2.6-.9 1.2-1.7 3-1.5 4.7 1.7.1 3.5-.9 4.5-2.3.9-1.3 1.6-3 1.5-5ZM20.5 17.2c-.4 1-1 1.9-1.7 2.7-1 1.1-2.4 2.4-4 2.4-1.5 0-1.9-.9-4-.9-2.1 0-2.6.9-4 .9-1.6 0-2.9-1.2-3.9-2.3-2.7-3.1-3-6.9-1.3-9 1.2-1.4 3-2.3 4.7-2.3 1.7 0 2.8.9 4.2.9 1.4 0 2.2-.9 4.2-.9 1.5 0 3 .8 4.1 2.1-3.6 2-3 7.2 1.7 6.4Z"/></svg>`,
+  },
+  {
+    id: "windows",
+    name: "Windows",
+    formats: [".msi"],
+    note: "Code-signing lands with Phase 14. SmartScreen may flag unsigned builds.",
+    icon: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 11 4.4v7.6H3V5.5Zm0 13 8 1.1v-7.6H3v6.5Zm9 1.2L22 21V12h-10v7.7Zm0-15.4V12h10V3l-10 1.3Z"/></svg>`,
+  },
+];
+---
+<BaseLayout
+  title="Download — Apiovnia"
+  description="Get Apiovnia for Linux, macOS or Windows. Pre-built binaries land with Phase 14 — until then, build from source in a couple of minutes."
+>
+  <section class="page-head">
+    <div class="container">
+      <span class="eyebrow">Download</span>
+      <h1>Get Apiovnia.</h1>
+      <p class="lead">
+        Pre-built binaries land in <strong>Phase 14</strong>. Until then, if Rust and Node are already in your <code>PATH</code>, you're about two minutes from a working build. The instructions below are real instructions, not a wizard.
+      </p>
+
+      <div class="release-banner">
+        <span class="status warn">pre-release</span>
+        <span>
+          No signed release bundles yet — track <a href={releases} target="_blank" rel="noopener">Releases</a> or watch the repo for Phase 14.
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="glow-divider" />
+
+  <section class="platforms">
+    <div class="container">
+      <h2>Pick your platform</h2>
+      <div class="plat-grid">
+        {platforms.map((p) => (
+          <article class="plat">
+            <header>
+              <span class="plat-icon" set:html={p.icon} aria-hidden="true" />
+              <h3>{p.name}</h3>
+            </header>
+            <div class="plat-formats">
+              {p.formats.map((f) => <span class="plat-format">{f}</span>)}
+            </div>
+            <p class="plat-note">{p.note}</p>
+            <a class="btn" href={releases} target="_blank" rel="noopener">
+              Releases →
+            </a>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="build">
+    <div class="container">
+      <span class="eyebrow">Or build it yourself, like a person</span>
+      <h2>Two minutes, if the chain is already on your machine.</h2>
+
+      <ol class="steps">
+        <li>
+          <strong>Install prerequisites.</strong>
+          <p>Rust stable, Node ≥ 20, pnpm. On Linux you also need <code>webkit2gtk-4.1</code> and <code>libayatana-appindicator3</code> — see <a href="https://v2.tauri.app/start/prerequisites/" target="_blank" rel="noopener">Tauri prerequisites</a>.</p>
+        </li>
+        <li>
+          <strong>Clone + install.</strong>
+          <pre><code>git clone https://github.com/opalczynski/apiovnia.git
+cd apiovnia/apiovnia-app
+pnpm install</code></pre>
+        </li>
+        <li>
+          <strong>Dev run, or build.</strong>
+          <pre><code><span class="muted"># development — opens the native window with HMR + hot Rust rebuilds</span>
+pnpm tauri:dev
+
+<span class="muted"># production bundle for your platform</span>
+pnpm tauri:build</code></pre>
+        </li>
+      </ol>
+
+      <p class="muted small">
+        Your data will live at <code>~/.local/share/tech.trurl.apiovnia/apiovnia.db</code> (Linux XDG) or <code>~/Library/Application Support/tech.trurl.apiovnia/apiovnia.db</code> (macOS). Delete the file for a clean state. There is nothing else to clean. <a href={`${base}/docs`}>More setup notes →</a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .page-head { padding: var(--space-9) 0 var(--space-7); }
+  .page-head h1 { margin-top: var(--space-4); }
+  .lead { margin-top: var(--space-5); max-width: 720px; font-size: 17px; color: var(--fg-dim); }
+  .release-banner {
+    margin-top: var(--space-5);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-ctrl);
+    font-size: 13.5px;
+    color: var(--fg-dim);
+  }
+
+  .platforms { padding: var(--space-7) 0; }
+  .platforms h2 { margin-bottom: var(--space-5); }
+  .plat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-4);
+  }
+  .plat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .plat header { display: flex; align-items: center; gap: 12px; }
+  .plat header h3 { font-size: 18px; }
+  .plat-icon {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-bd);
+    color: var(--accent);
+  }
+  .plat-icon :global(svg) { width: 18px; height: 18px; }
+  .plat-formats { display: flex; gap: 6px; flex-wrap: wrap; }
+  .plat-format {
+    font: 500 11px/1 var(--mono);
+    color: var(--fg-dim);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 7px;
+  }
+  .plat-note { color: var(--fg-muted); font-size: 13px; flex: 1; }
+  .plat .btn { align-self: flex-start; }
+
+  .build { padding: var(--space-7) 0 var(--space-9); background: var(--surface); border-top: 1px solid var(--border); }
+  .build h2 { margin-top: var(--space-3); }
+  .steps {
+    margin-top: var(--space-6);
+    padding-left: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    color: var(--fg-dim);
+  }
+  .steps li::marker { color: var(--accent); font-weight: 600; }
+  .steps strong { color: var(--fg); }
+  .steps p { margin-top: 6px; }
+  .steps pre { margin-top: var(--space-3); }
+  .muted { color: var(--fg-muted); }
+  .muted .small { font-size: 12.5px; }
+  .small { font-size: 12.5px; margin-top: var(--space-5); }
+  pre .muted { color: var(--fg-faint); }
+</style>

@@ -33,7 +33,25 @@ export type HttpMethod =
   | "HEAD"
   | "OPTIONS";
 
-export type BodyType = "none" | "json" | "form" | "multipart" | "raw";
+export type BodyType =
+  | "none"
+  | "json"
+  | "form"
+  | "multipart"
+  | "raw"
+  | "graphql";
+
+/**
+ * GraphQL request body — query document + variables. Serialised as JSON
+ * inside `request.bodyContent` (same trick as form/multipart). `variables`
+ * is the raw text the user typed (expected to be a JSON object); the Rust
+ * executor wraps `{query, variables}` into the `application/json` wire body.
+ * Mirrors `apiovnia_core::graphql::GraphQlBody` — keep these in sync.
+ */
+export type GraphQlBody = {
+  query: string;
+  variables: string;
+};
 
 /**
  * Multipart row — text part or file part. Serialised as an array inside

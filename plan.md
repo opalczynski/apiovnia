@@ -1707,7 +1707,8 @@ _Decyzja o storage:_
 | **Packaging (signing, bundle targets)** | placeholdery | **9 (next)** |
 | Hardening features | brak | 10 |
 | Settings: rozszerzenie (timeout, proxy, density, clear-history) | brak | 12 |
-| Wsparcie wielu rodzajów API (GraphQL/WS/SSE/gRPC) | szkic | 13 |
+| GraphQL (wariant `BodyType`) | ✅ done | 13 |
+| Wsparcie wielu rodzajów API (SSE/WS/MCP/gRPC) | analiza | 13 |
 | CI + release automation (GitHub Actions, tauri-action) | brak | 14 |
 | Strona docs / landing (GitHub Pages) | brak | 15 |
 
@@ -1764,35 +1765,202 @@ Zebrane po Phase 6, do rozważenia gdy MVP wyląduje:
   albo bumpnąć m_cost), nie ma czystej ścieżki migracji. Format v2 z
   jawnym prefiksem `apv2|nonce|ct|tag` + path `re_encrypt_v1_to_v2`.
 
-### Faza 13 — wsparcie wielu rodzajów API _(szkic — do rozpisania)_
+### Faza 13 — wsparcie wielu rodzajów API _(analiza — 2026-05-20)_
 
-Apiovnia dziś robi tylko REST/HTTP. W planach wsparcie kolejnych rodzajów
-API. To duży refactor — model `Request` zakłada REST (method + URL +
-params + headers + body + auth); inne protokoły mają inny kształt.
+**Postęp.**
 
-Kandydaci, z grubsza rosnącym kosztem:
-- **GraphQL** — najbliżej REST-a: ten sam transport HTTP POST, ale edytor
-  query/variables + introspekcja schematu + autocomplete. Osobny body
-  mode albo osobny typ requestu.
-- **WebSocket** — long-lived connection, edytor "wyślij wiadomość" + log
-  strumienia przychodzącego. Inny executor (nie request/response).
-- **SSE (Server-Sent Events)** — jednostronny strumień; prostszy niż WS,
-  ale też model "otwórz → obserwuj" zamiast "wyślij → odbierz".
-- **gRPC** — wymaga parsowania `.proto`, reflection, HTTP/2; największy
-  kawałek, prawdopodobnie osobny crate `apiovnia-grpc`.
+- ✅ **GraphQL — DONE (2026-05-21).** Zrealizowane dokładnie tak, jak
+  przewidywała analiza: `BodyType::GraphQl` (enum +1, kolumna `body_type`
+  to TEXT → zero migracji). Szczegóły w sekcji **„Faza 13.1 — GraphQL"**
+  niżej.
+- ⏭️ **Następne: SSE**, potem **MCP**. Reszta (WebSocket, gRPC) świadomie
+  poza zakresem na razie — patrz „Rekomendowana sekwencja".
 
-Otwarte pytania architektoniczne (do rozpisania osobno przed startem):
-- `Request` → `enum RequestKind { Rest, GraphQl, WebSocket, Sse, Grpc }`
-  czy równoległe tabele/modele per protokół?
-- Response viewer dziś zakłada pojedynczy response. WS/SSE potrzebują
-  widoku strumienia (lista wiadomości w czasie).
-- Resolver / env overrides / snippety / OpenAPI — wszystko dziś
-  REST-only; każdy protokół to nowe ścieżki.
-- `HistoryRow` zakłada jeden request → jeden response.
+**Punkt wyjścia.** Codebase jest w 100% request/response, REST-shaped,
+jednostrzałowy:
+- `Request` (`apiovnia-core/model.rs`) — płaski struct: `method` (enum
+  7 verbów) + `url` + `headers/params` + `body_type` (enum) +
+  `body_content` + `auth`. Stałe kolumny w tabeli `requests`.
+- `ExecutionResult` (`apiovnia-http/result.rs`) — płaski: jeden status +
+  headers + body.
+- Executor robi `resp.bytes().await` — zbiera całe body naraz.
+- `execute_request` → 1 wywołanie IPC → 1 wynik → 1 wiersz
+  `request_history` (jedna egzekucja = jedno body).
+- Zero infrastruktury push — brak `emit`/`listen`/`Channel`. IPC to
+  wyłącznie `invoke → wynik`.
+- `ResponseViewer` — 3 stany, 4 zakładki na pojedynczym `currentResponse`.
 
-**Status:** świadomie nierozpisane do końca — najpierw decyzja, czy to
-`enum` na istniejącym modelu, czy modele równoległe. To nie jest "dorzuć
-pole", to przeprojektowanie rdzenia; rozpisać jako osobny dokument.
+**Ranking trudności (easiest → hardest).**
+
+| # | Protokół | Trudność | Szac.* | Zmiana modelu | Nowy paradygmat |
+|---|---|---|---|---|---|
+| 1 | GraphQL | niska | 2-3 dni basic / +3-5 dni autocomplete | `BodyType` +1 wariant | nie |
+| 2 | SSE | niska-średnia | 4-6 dni | nie (GET) | tak — streaming |
+| 3 | WebSocket | średnia-wysoka | 1-2 tyg. | tak — `RequestKind` | tak |
+| 4 | MCP | wysoka | 2-3 tyg. | tak | tak (sesja + stdio) |
+| 5 | gRPC | najwyższa | 3-4 tyg.+ | tak (osobny podsystem) | tak |
+
+\* rząd wielkości, solo dev, ±. Nakłady się kompoundują — patrz sekwencja.
+
+**Per-protokół.**
+
+1. **GraphQL — ✅ ZREALIZOWANE (2026-05-21).** Analiza trafiła w punkt:
+   request GraphQL to zwykły HTTP POST z JSON-em `{query, variables}`.
+   Executor, IPC, historia, JSON viewer — zadziałały bez zmian. „Wsparcie"
+   = UX edytora: wariant `BodyType::GraphQl` (enum +1; `body_content` trzyma
+   `{query,variables}` jako string → zero migracji, kolumna `body_type` to
+   TEXT), edytor query+variables, tryb GraphQL w CodeMirror. Jedyne
+   odstępstwo od analizy: zamiast `cm6-graphql` (które ciągnie `graphql`
+   ~1 MB) napisany został malutki własny `StreamLanguage` na samo
+   podświetlanie — autocomplete przez introspekcję świadomie zostawione
+   jako follow-up. Pełny opis: sekcja **„Faza 13.1 — GraphQL"** niżej.
+
+2. **SSE — najtańszy streaming, ale pierwszy streaming w ogóle.** Request
+   SSE to zwykły GET → model `Request` bez zmian. Praca: streaming
+   w executorze (`bytes_stream()` zamiast `bytes()`), parser
+   `text/event-stream`, push server→klient (Tauri events — pierwszy raz),
+   nowy komponent log-eventów w viewerze, przycisk Stop. Gotcha: stały
+   klient ma timeout 30 s — zabiłby długie połączenie, trzeba per-request
+   override. Historia: sesja = N eventów, `request_history` = 1 wiersz/1
+   body → albo nie zapisujemy SSE, albo zrzut zakumulowanego logu.
+   Strategicznie: hydraulika streamingu reużywana potem przez WS i MCP-HTTP.
+
+3. **WebSocket — Rubikon.** Persistentne połączenie, dwukierunkowe, cykl
+   connect→send/recv→disconnect. Nie mieści się w `Request` /
+   `ExecutionResult` → wymusza `enum RequestKind` (albo modele równoległe)
+   + nowy schemat storage. Nowy executor (`tokio-tungstenite`). Nowy UI:
+   stan połączenia, log wysłanych+odebranych, pole „wyślij". Pierwszy
+   protokół, który realnie wymusza przeprojektowanie rdzenia.
+
+4. **MCP — „MCP/JSON-RPC" to dwie różne rzeczy.** Samo JSON-RPC po HTTP
+   jest trywialne (POST `{"jsonrpc":"2.0",...}` — w zasadzie body-preset).
+   Ale to nie differentiator. MCP-protokół to sesja stanowa: handshake
+   `initialize`, negocjacja capabilities, `tools/list` / `tools/call`,
+   notyfikacje serwera. Dwa transporty: stdio (spawn subprocesu — nowa
+   zdolność, zarządzanie procesami, nie-HTTP) lub Streamable HTTP (POST +
+   SSE — reużywa hydrauliki z SSE). Na to warstwa semantyki MCP + UI
+   odkrywania toolów. Złożoność ≈ WebSocket + warstwa protokołu.
+
+5. **gRPC — osobny podsystem, tylko na sygnał userów.** HTTP/2 + protobuf
+   + parsowanie `.proto` albo server reflection. reqwest tego nie robi →
+   nowy dep (`tonic`). `tonic` chce codegenu z `.proto` w compile-time;
+   klient API potrzebuje dynamicznego protobuf w runtime (`prost-reflect`
+   + dynamic messages) — tryb hard. Wire binarny, 4 tryby streamingu
+   (unary / server / client / bidi). Praktycznie osobny crate
+   `apiovnia-grpc`.
+
+**Przekrojowe ściany architektoniczne.**
+- **A. Model płaski i REST-owy.** WS/MCP/gRPC wymuszają `RequestKind` albo
+  modele równoległe. GraphQL i SSE tego NIE wywołują (GraphQL = wariant
+  `BodyType`, SSE = zwykły GET) — dlatego to one są low-hanging fruit.
+  Ściana modelu uderza dopiero przy WebSockecie.
+- **B. One-shot vs stream.** `ExecutionResult` + `request_history`
+  (1 wiersz = 1 body) zakładają jedną odpowiedź. Streaming → nowy model
+  wyniku + decyzja co z historią. Pierwszy raz boli przy SSE.
+- **C. IPC tylko request/reply.** Push (Tauri `emit`/Channel) + komendy
+  cyklu życia (start/stop/send) — nowy wzorzec, pierwszy przy SSE.
+- **D. Toolchain REST-only** — resolver, `{{var}}`, env overrides,
+  `Copy as…`, OpenAPI. Env overrides + `{{var}}` przenoszą się za darmo
+  na wszystko HTTP-owe (GraphQL/SSE/JSON-RPC/MCP-HTTP mają URL+headers).
+  `Copy as…` i OpenAPI są REST-specyficzne — po prostu nie dotyczą nowych
+  protokołów (akceptowalne).
+- **E. Viewer zakłada jedno statyczne body.** Streaming → nowy komponent
+  log-wiadomości; WS dodatkowo dwukierunkowy.
+
+**Rekomendowana sekwencja** _(zaktualizowana 2026-05-21 — wybór: GraphQL →
+SSE → MCP, reszta wstrzymana)._
+1. ✅ GraphQL — szybki widoczny win na istniejących szynach, zero
+   paradygmatu. Basic mode dowieziony; autocomplete osobno (follow-up).
+2. ⏭️ **SSE** — buduje fundament streamingu (push przez Tauri events +
+   viewer-log) reużywany potem przez MCP-HTTP. Request SSE to zwykły GET,
+   więc model `Request` zostaje bez zmian; praca jest w executorze
+   (`bytes_stream()`), parserze `text/event-stream` i nowym komponencie
+   log-eventów.
+3. ⏭️ **MCP** — celujemy w transport **Streamable HTTP** (POST + SSE), bo
+   reużywa hydraulikę streamingu z kroku 2 i NIE wymaga refactoru
+   `RequestKind` ani spawnowania subprocesów (transport stdio zostaje na
+   później). Na to warstwa semantyki MCP (`initialize` → `tools/list` →
+   `tools/call`) + UI odkrywania toolów.
+4. ⏸️ WebSocket, gRPC — świadomie wstrzymane („reszty nie ruszamy").
+   WebSocket nadal jest momentem, w którym płaci się za `enum RequestKind`;
+   gRPC zostaje osobnym podsystemem tylko na realny sygnał userów.
+
+**Wniosek:** GraphQL dowieziony bez najmniejszego refactoru modelu —
+potwierdzenie, że był prawdziwym low-hanging fruitem. SSE jest następny i
+też mieści się na istniejących szynach (zwykły GET); zbudowana przy nim
+hydraulika streamingu pozwala dołożyć MCP po Streamable HTTP bez dotykania
+rdzenia. WebSocket — i wymuszony przez niego `RequestKind` — pozostaje
+granicą, za którą na razie nie wchodzimy.
+
+### Faza 13.1 — GraphQL _(✅ done — 2026-05-21)_
+
+GraphQL jako wariant `BodyType`, dokładnie wg analizy Fazy 13. Zero migracji
+SQL, zero nowego paradygmatu, zero nowych zależności npm/cargo.
+
+**Obsługiwane metody — POST + GET (zgodnie z GraphQL-over-HTTP).**
+GraphQL nie mapuje operacji na czasowniki HTTP; spec definiuje tylko **POST**
+(body JSON `{query,variables}`, query + mutacje) i **GET** (`query`/`variables`
+w query-stringu URL-a, **tylko** odczyty — GET musi być bezpieczny). PUT /
+PATCH / DELETE są w GraphQL bez znaczenia. Stąd picker metody na pasku jest
+ograniczony do GET/POST, gdy `bodyType == graphql`.
+
+**Backend (Rust).**
+- `apiovnia-core::graphql` — nowy moduł. `GraphQlBody { query, variables }`
+  (`variables` to **surowy tekst**, nie sparsowany `Value` — niedokończona
+  edycja round-trippuje bez utraty). `parse()` — leniwy (puste/zepsute
+  `body_content` → pusty body). `to_wire_json()` — kopertę POST
+  `{"query":…,"variables":…}` (wkleja `variables` dosłownie, puste → `{}`,
+  `query` JSON-escapowane). `to_get_query_params()` — pary `query`/`variables`
+  do query-stringu GET-a. Oba mają warianty `_checked` (walidują, że
+  `variables` to poprawny JSON) dzielące prywatny `validate_variables`.
+  11 testów jednostkowych.
+- `model::BodyType` — nowy wariant `GraphQl` (serde `"graphql"`).
+- `apiovnia-http` executor — gałąź `BodyType::GraphQl`: dla **POST**
+  `to_wire_json_checked()` → body + `Content-Type: application/json` (jeśli
+  user nie ustawił własnego); dla **GET** `to_get_query_params_checked()` →
+  `query`/`variables` dopisane do URL-a **przed** zbudowaniem buildera, brak
+  body. Malformed `variables` → `InvalidRequest` zamiast mylącego 400.
+- `apiovnia-storage` — `body_type_str`/`parse_body_type` (w `requests.rs`
+  **i** `overrides.rs`) znają `"graphql"`. Kolumna `body_type` to wolny
+  TEXT — brak migracji, brak CHECK do ruszenia.
+- Snippety (`Copy as…`) — `SnippetFormat::render()` „spłaszcza" request
+  GraphQL **zanim** trafi do generatora: POST → JSON body (koperta wire),
+  GET → `query`/`variables` dopisane do `params`. Curl/python/httpie/fetch/
+  PowerShell nie muszą wiedzieć o GraphQL-u. Wyczerpujące `match`-e dostały
+  gałąź `GraphQl` zmergowaną z `Json`. 2 testy fold (POST + GET).
+- `apiovnia-openapi` export/redact — GraphQL traktowany jak JSON body
+  (export wstawia kopertę wire jako przykład; redact best-effort).
+
+**Frontend (Svelte).**
+- `domain.ts` — `BodyType` +`"graphql"`, nowy typ `GraphQlBody`.
+- `GraphQlEditor.svelte` — nowy split-edytor: pane Query (góra, `flex:1`)
+  + pane Variables (dół, JSON z lintem). Oba kodują się razem do
+  `bodyContent` jako `{query,variables}` (ten sam single-column trick co
+  Form/Multipart). Dekodowanie leniwe (lustro `GraphQlBody::parse`).
+- `CodeMirrorEditor.svelte` — nowy język `"graphql"`: malutki własny
+  `StreamLanguage` (~60 linii) na podświetlanie składni — keywords,
+  stringi (w tym block `"""…"""` ze stanem między liniami), komentarze
+  `#`, liczby, `$zmienne`, `@dyrektywy`, interpunkcja. **Świadomie bez
+  `cm6-graphql`** — to ciągnęłoby `graphql` (~1 MB) i wymagało schematu.
+  HighlightStyle dostał 3 nowe tagi (comment / variableName / meta).
+- `CodeMirrorEditor.svelte` — **bugfix przy okazji**: `$effect` tworzący
+  `EditorView` opakowany w `untrack`. Wcześniej czytał `value`/`lint`/
+  `language`/`readOnly` jako zależności, więc zmiana któregokolwiek
+  re-uruchamiała effect → niszczyła i odtwarzała edytor → **kradła focus
+  w trakcie pisania**. Wyszło na panelu Variables (lint przełącza się
+  pusty↔niepusty przy pierwszym znaku). Każdy z tych propów ma własny
+  effect rekonfigurujący — effect tworzący ma zależeć tylko od `hostEl`.
+- `BodyTab.svelte` — segment „GraphQL"; przełączenie na GraphQL wymusza
+  metodę POST (uniwersalny default; user może potem wybrać GET w pickerze).
+- `UrlBar.svelte` — picker metody zawężony do GET/POST, gdy `bodyType ==
+  graphql` (`$derived` filtr nad pełną listą siedmiu czasowników).
+- `EnvOverridesTab.svelte` — „GraphQL" w segmencie typów body override'a.
+
+**Świadomie odłożone (follow-up).** Autocomplete + walidacja przez
+introspekcję schematu (`cm6-graphql` + cache schematu); osobny widok
+błędów `errors[]` w response viewerze (dziś GraphQL-owe błędy widać po
+prostu jako JSON — co jest OK); badge „GQL" na liście requestów zamiast
+„POST" (wymagałby `body_type` w `RequestSummary`).
 
 ### Faza 14 — CI / wersjonowanie / release management
 
@@ -1925,12 +2093,20 @@ pliku `CNAME` — ginie przy Actions-deploy).
   przełączane live; `<html data-theme>` + CSS-var bundles w `app.css`.
 - **History retention** — konfigurowalny limit (100/200/500/1000).
 
+**Działa od Faza 13.1 (2026-05-21):**
+- **GraphQL** — typ body „GraphQL" w `BodyTab`: split-edytor query +
+  variables (`GraphQlEditor.svelte`), własny tryb podświetlania GraphQL
+  w CodeMirror. Wysyłany jako JSON POST `{query,variables}`; działa
+  z env-vars, override'ami, historią i „Copy as…" bez zmian. Pełny opis:
+  Faza 13.1 wyżej.
+
 **Brak feature'u w ogóle:**
 - Packaging dla release — `tauri.conf.json` ma `bundle.targets: "all"` ale
   bez signing config (Phase 9)
 - Settings: rozszerzenie — timeout / proxy / density / clear-history;
   patrz Faza 12 (audit-conclusions)
-- Wsparcie wielu rodzajów API (GraphQL / WS / SSE / gRPC) — szkic w Fazie 13
+- Wsparcie wielu rodzajów API — GraphQL ✅ done (Faza 13.1); następne SSE,
+  potem MCP; WS/gRPC wstrzymane — patrz Faza 13
 - Phase 10 hardening — patrz lista pomysłów wyżej
 
 ### Otwarte tematy / dług techniczny

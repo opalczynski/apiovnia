@@ -4,7 +4,7 @@
 
 Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no sync, no accounts, no telemetry. Environments (`dev` / `stage` / `prod`) live as per-request overrides instead of variable soup, and any environment can be locked behind a master password with everything inside it encrypted at rest.
 
-> Status: **alpha**, under active development. Phases 0–9.5 done (storage, request editor, HTTP execution, rich JSON viewer, environments + per-request overrides + `{{var}}` interpolation, multipart bodies with file parts, **master-password sealing for encrypted envs**, **command palette + Copy as… submenu with 5 formats**, **OpenAPI 3.x import + export**, **History panel**, **fresh-DB onboarding**, **honeycomb app icon**). **Phase 11 just landed** — a **Settings panel with five themes** (`apiovnia` / `atomic-dark` / `tokyo-night` / `monokai` / `light`). Next up: packaging, then deeper settings and multi-protocol support. See [`plan.md`](./plan.md) for the per-phase tracker.
+> Status: **alpha**, under active development. Phases 0–9.5 done (storage, request editor, HTTP execution, rich JSON viewer, environments + per-request overrides + `{{var}}` interpolation, multipart bodies with file parts, **master-password sealing for encrypted envs**, **command palette + Copy as… submenu with 5 formats**, **OpenAPI 3.x import + export**, **History panel**, **fresh-DB onboarding**, **honeycomb app icon**). **Phase 11** added a **Settings panel with five themes** (`apiovnia` / `atomic-dark` / `tokyo-night` / `monokai` / `light`); **Phase 13.1 just landed GraphQL** — a query + variables editor sent as a JSON `POST`. Next up: packaging, then the rest of multi-protocol support (SSE, then MCP). See [`plan.md`](./plan.md) for the per-phase tracker.
 
 ## Why another API client?
 
@@ -19,7 +19,7 @@ Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no s
 - Three-panel shell (Projects · Collections · Requests · Editor + Response), resizable, persisted.
 - Projects → Collections → Requests CRUD against SQLite. Switching a project auto-cascades to the first collection and first request — no empty-flash.
 - Filter inputs in both side panels: text filter over projects + collections (with ⌘P focus), text + HTTP-method-multi-select for requests.
-- Request editor: method picker, URL, params, headers, body (None / JSON / **Form (urlencoded)** / **Multipart (text + files)** / Raw), auth (none / bearer / basic / apikey). Edits debounce-save in 250 ms.
+- Request editor: method picker, URL, params, headers, body (None / JSON / **GraphQL** / **Form (urlencoded)** / **Multipart (text + files)** / Raw), auth (none / bearer / basic / apikey). Edits debounce-save in 250 ms.
 - CodeMirror 6 body editor with JSON parse-lint (single gutter marker, banner above the editor on errors).
 - HTTP execution (`reqwest`, rustls, gzip, redirects). 30 s timeout, 2 MiB body cap with truncation indicator.
 - Response viewer with sub-tabs: **Pretty** (custom JSON viewer with collapsible nodes, ⌘F search + next/prev nav, hover-copy per value, expand/collapse-all; CodeMirror for HTML/XML/plain), **Headers**, **Request** (final URL + headers + body preview sent on the wire — multipart preview is reconstructed in RFC-7578 form with `[N bytes — file contents omitted]` placeholders), **Raw**.
@@ -37,6 +37,7 @@ Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no s
 - **`⌘1` / `⌘2` / `⌘3`** focus the left-filter / middle-filter / URL bar respectively (cross-platform — `Ctrl` on Linux/Windows).
 - **Fresh-DB onboarding overlay** — a full-shell welcome card on first launch with a primary "Create your first project" CTA, a secondary "Start from OpenAPI spec…" path, a 3-step tour of the three panels, and a keyboard-shortcut cheat-sheet.
 - **Settings panel + five themes** — `⌘,` (or the gear in the left-panel footer) opens a Settings modal. Pick from five themes — `apiovnia` (the amber original), `atomic-dark` (monochrome, zero colour noise), `tokyo-night`, `monokai`, and `light` — applied live across the whole shell, JSON viewer and code editor included. Also a configurable History retention limit and an About pane.
+- **GraphQL requests** — pick "GraphQL" as the body type for a split editor: a syntax-highlighted query pane (query / mutation / subscription / fragment) on top, a JSON variables pane with parse-lint below. Sent per the GraphQL-over-HTTP spec — **POST** ships the `{query, variables}` envelope as a JSON body (queries + mutations); **GET** moves `query` / `variables` into the URL query string (read-only queries, cacheable). The method picker is restricted to GET/POST while the body type is GraphQL. It rides every existing rail — env variables, per-env overrides, history, and "Copy as…" all work unchanged.
 
 ## On the roadmap (in order)
 
@@ -54,11 +55,12 @@ Apiovnia is a Tauri 2 desktop app. SQLite is the single source of truth — no s
 | 9 | Packaging (.deb/.AppImage/.dmg/.msi), signing | **next** |
 | 10 | Security & UX hardening (configurable lock timeout, change-password flow, per-field secrets, hardware keychain wrap, …) | |
 | 12 | Settings expansion (send timeout, proxy/TLS, UI density, clear-history) | |
-| 13 | Multi-protocol support (GraphQL / WebSocket / SSE / gRPC) | sketch |
+| 13.1 | GraphQL — query + variables editor, `POST` (JSON body) + `GET` (query string) execution | ✅ done |
+| 13 | Multi-protocol support — SSE next, then MCP (WebSocket / gRPC deferred) | scoped |
 | 14 | CI + release automation (GitHub Actions, multi-OS builds → Releases) | |
 | 15 | Docs / landing site (GitHub Pages, custom domain) | |
 
-Out of scope: pre-request scripts, response test assertions, sync / sharing / team features, mobile, auto-updater, drag-to-reorder. (WebSocket / SSE / gRPC / GraphQL were once out of scope — they are now roadmapped as Phase 13. Light theme shipped in Phase 11.)
+Out of scope: pre-request scripts, response test assertions, sync / sharing / team features, mobile, auto-updater, drag-to-reorder. (WebSocket / SSE / gRPC / GraphQL were once out of scope — they are now roadmapped as Phase 13; GraphQL shipped in 13.1, SSE + MCP are next. Light theme shipped in Phase 11.)
 
 ## Architecture at a glance
 
@@ -113,7 +115,7 @@ cargo --manifest-path src-tauri/Cargo.toml test --workspace
 pnpm build                                                                    # Vite production bundle
 ```
 
-Rust unit tests cover the storage layer (in-memory SQLite, 5 cases), HTTP content-type classification (2 cases), the env resolver + `{{var}}` interpolation (33 cases), the snippet generators (43 cases across curl/Python/HTTPie/JavaScript/PowerShell — methods, query encoding, auth flavours, all body types, multipart, language-specific escaping), crypto (21 cases — 13 AEAD round-trip / wrong-key / tamper / password check, 8 zxcvbn policy paths), and OpenAPI (56 cases + 1 integration test against the real petstore — redact, export schema inference, import `$ref` synthesis). **169 tests total today.**
+Rust unit tests cover the storage layer (in-memory SQLite, 5 cases), HTTP content-type classification (2 cases), the env resolver + `{{var}}` interpolation (33 cases), the snippet generators (45 cases across curl/Python/HTTPie/JavaScript/PowerShell — methods, query encoding, auth flavours, all body types, multipart, the GraphQL POST/GET fold, language-specific escaping), the GraphQL body model (11 cases — wire-envelope round-trip, variable splicing, GET query-param mapping, strict validation), crypto (21 cases — 13 AEAD round-trip / wrong-key / tamper / password check, 8 zxcvbn policy paths), and OpenAPI (56 cases + 1 integration test against the real petstore — redact, export schema inference, import `$ref` synthesis). **182 tests total today.**
 
 ## Tech stack
 
@@ -122,7 +124,7 @@ Rust unit tests cover the storage layer (in-memory SQLite, 5 cases), HTTP conten
 - **Svelte 5** — runes API only, no legacy stores
 - **Vite 6** — frontend bundler (no SvelteKit — this is a desktop app, SSR is irrelevant)
 - **Tailwind v4** — CSS-first `@theme` config, plus plain CSS in scoped `<style>` blocks for design-token parity
-- **CodeMirror 6** — body editor (JSON / HTML / XML) with our own dark theme keyed on the design tokens
+- **CodeMirror 6** — body editor (JSON / HTML / XML / GraphQL) with our own dark theme keyed on the design tokens; the GraphQL mode is a tiny hand-rolled `StreamLanguage` (no `cm6-graphql` dependency)
 - **`tauri-plugin-dialog`** — native file picker for multipart file parts
 
 ## Repo conventions

@@ -79,7 +79,8 @@ pub fn to_python_requests(req: &Request) -> String {
     // Body.
     match req.body_type {
         BodyType::None => {}
-        BodyType::Json => {
+        // GraphQL is folded into a JSON body upstream by `SnippetFormat::render`.
+        BodyType::Json | BodyType::GraphQl => {
             // Use `json=` so requests handles serialisation + Content-Type.
             // If the user already set a Content-Type header we still pass
             // `json=`; requests respects an explicit header.

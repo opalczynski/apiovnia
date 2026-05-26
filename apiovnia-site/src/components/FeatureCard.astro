@@ -1,0 +1,62 @@
+---
+interface Props {
+  title: string;
+  icon?: string;
+  kbd?: string;
+}
+const { title, icon, kbd } = Astro.props;
+---
+<article class="fc">
+  <header class="fc-head">
+    {icon && <span class="fc-icon" set:html={icon} aria-hidden="true" />}
+    <h3>{title}</h3>
+    {kbd && <span class="kbd">{kbd}</span>}
+  </header>
+  <div class="fc-body">
+    <slot />
+  </div>
+</article>
+
+<style>
+  .fc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: var(--space-5);
+    transition: border-color .15s ease, transform .15s ease, background .15s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .fc:hover {
+    border-color: var(--accent-bd);
+    background: var(--surface-2);
+  }
+  .fc-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .fc-head h3 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: -0.015em;
+  }
+  .fc-icon {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-bd);
+    color: var(--accent);
+  }
+  .fc-icon :global(svg) { width: 16px; height: 16px; }
+  .fc-head .kbd { margin-left: auto; }
+
+  .fc-body { color: var(--fg-dim); font-size: 14px; line-height: 1.55; }
+  .fc-body :global(p + p) { margin-top: var(--space-3); }
+</style>
