@@ -446,8 +446,7 @@ fn synthesize_from_schema(spec: &Spec, schema: &ObjectSchema, depth: u8) -> Valu
         for (key, prop) in &schema.properties {
             let val = prop
                 .resolve(spec)
-                .map(|s| synthesize_from_schema(spec, &s, depth + 1))
-                .unwrap_or(Value::Null);
+                .map_or(Value::Null, |s| synthesize_from_schema(spec, &s, depth + 1));
             obj.insert(key.clone(), val);
         }
         return Value::Object(obj);
