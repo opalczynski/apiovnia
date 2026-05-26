@@ -5,9 +5,9 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
-authors = ["Apiovnia"]
-rust-version = "1.78"
+license = "PolyForm-Noncommercial-1.0.0"
+authors = ["Sebastian Opałczyński"]
+rust-version = "1.95"
 
 [workspace.dependencies]
 # Internal crates

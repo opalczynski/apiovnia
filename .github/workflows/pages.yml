@@ -1,0 +1,65 @@
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apiovnia-site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# One Pages deploy at a time. Don't cancel mid-deploy — Pages doesn't
+# tolerate partial uploads — but skip queued runs while one is active.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build Astro site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apiovnia-site/pnpm-lock.yaml
+
+      - name: pnpm install
+        working-directory: apiovnia-site
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: apiovnia-site
+        run: pnpm build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apiovnia-site/dist
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

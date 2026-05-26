@@ -17,7 +17,7 @@ use apiovnia_storage::Db;
 /// We pick 10 because each request is cheap to unlock again and the cost
 /// of "left for lunch" leaking secrets to anyone with desktop access is
 /// asymmetric.
-pub const IDLE_AUTO_LOCK: Duration = Duration::from_secs(10 * 60);
+pub const IDLE_AUTO_LOCK: Duration = Duration::from_mins(10);
 
 #[derive(Clone)]
 pub struct AppState {
