@@ -18,14 +18,13 @@ const phases = [
   { id: "9.5",  title: "App icon, TitleBar logo, footer version, UI polish",                                      status: "done", note: "Honeycomb master SVG, shortcut swap (⌘P palette / ⌘K filter)" },
   { id: "11",   title: "Settings panel + five themes",                                                            status: "done", note: "apiovnia / atomic-dark / tokyo-night / monokai / light" },
   { id: "13.1", title: "GraphQL — query + variables editor, POST + GET execution",                                status: "done", note: "JSON-body POST + URL-string GET per the GraphQL-over-HTTP spec (13 tests)" },
+  { id: "14",   title: "CI + release automation (tag-driven, 3-OS matrix)",                                       status: "done", note: "GitHub Actions → tauri-action: macOS universal .dmg (signed + notarized), Windows .msi (unsigned), Linux .deb / .rpm / .AppImage. Draft releases on `v*` tags" },
+  { id: "15",   title: "Docs / landing site (GitHub Pages)",                                                      status: "done", note: "Astro 5 static at opalczynski.github.io/apiovnia/. 5 pages (Landing / Features / Roadmap / Download / Docs)" },
 
-  { id: "9 (pkg)", title: "Packaging — .deb / .AppImage / .dmg / .msi · signing",                                 status: "next", note: "tauri.conf.json has bundle.targets but no signing config" },
+  { id: "10", title: "Security & UX hardening",                                                                   status: "next", note: "Configurable lock timeout, change-password flow, per-field secrets, hardware keychain wrap" },
+  { id: "13", title: "Multi-protocol — SSE, then MCP (via Streamable HTTP)",                                      status: "next", note: "SSE first (streaming response viewer); MCP reuses that plumbing. WebSocket + gRPC stay deferred" },
 
-  { id: "10", title: "Security & UX hardening",                                                                   status: "scoped", note: "Configurable lock timeout, change-password flow, per-field secrets, hardware keychain wrap" },
   { id: "12", title: "Settings expansion",                                                                        status: "scoped", note: "Send timeout, proxy/TLS, UI density, clear-history" },
-  { id: "13", title: "Multi-protocol support — SSE, then MCP",                                                    status: "scoped", note: "MCP via Streamable HTTP reuses SSE plumbing. WebSocket + gRPC deferred" },
-  { id: "14", title: "CI + release automation",                                                                   status: "future", note: "GitHub Actions + tauri-action → GitHub Releases" },
-  { id: "15", title: "Docs / landing site",                                                                       status: "future", note: "You are here." },
 ];
 
 const groups = {
@@ -44,41 +43,42 @@ const groups = {
       <span class="eyebrow">Roadmap</span>
       <h1>Short, on purpose.</h1>
       <p class="lead">
-        Apiovnia is a single-developer product, not a platform. Every phase ships something you can run; there are no internal-only milestones. The full log lives in <code>plan.md</code> in the repo — this page is the readable summary.
+        Apiovnia is a single-developer product, not a platform. Every phase ships something you can run; there are no internal-only milestones. This page is the readable summary — the full per-phase log lives in the author's local working notes.
       </p>
 
       <div class="legend">
-        <span><span class="dot done"></span> Done</span>
         <span><span class="dot next"></span> Next</span>
+        <span><span class="dot done"></span> Done</span>
         <span><span class="dot scoped"></span> Scoped, not started</span>
-        <span><span class="dot future"></span> Future</span>
       </div>
     </div>
   </section>
 
   <hr class="glow-divider" />
 
-  {(["next", "done", "scoped", "future"] as const).map((key) => (
-    <section class="grp">
-      <div class="container">
-        <h2 class="grp-title">
-          {key === "next"   && <>Next up <span class="status warn">in progress</span></>}
-          {key === "done"   && <>Shipped <span class="status ok">{groups.done.length}</span></>}
-          {key === "scoped" && <>Scoped, not started</>}
-          {key === "future" && <>On the horizon</>}
-        </h2>
-        <ul class="phases">
-          {groups[key].map((p) => (
-            <li class={`phase ${p.status}`}>
-              <div class="phase-id">Phase {p.id}</div>
-              <div class="phase-title">{p.title}</div>
-              <div class="phase-note">{p.note}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  ))}
+  {(["next", "done", "scoped", "future"] as const)
+    .filter((key) => groups[key].length > 0)
+    .map((key) => (
+      <section class="grp">
+        <div class="container">
+          <h2 class="grp-title">
+            {key === "next"   && <>Next up <span class="status warn">queued</span></>}
+            {key === "done"   && <>Shipped <span class="status ok">{groups.done.length}</span></>}
+            {key === "scoped" && <>Scoped, not started</>}
+            {key === "future" && <>On the horizon</>}
+          </h2>
+          <ul class="phases">
+            {groups[key].map((p) => (
+              <li class={`phase ${p.status}`}>
+                <div class="phase-id">Phase {p.id}</div>
+                <div class="phase-title">{p.title}</div>
+                <div class="phase-note">{p.note}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    ))}
 
   <section class="oos">
     <div class="container">
