@@ -100,14 +100,14 @@ const toc = [
           And the <code>&#123;&#123;name&#125;&#125;</code> interpolation runs <em>after</em> the override merge, so an env variable can fill a hole left by an override — including inside encrypted values, decrypted in Rust before the request is built.
         </p>
       </div>
-      <ScreenshotSlot label="EnvOverridesTab — amber dot on the Overrides tab + per-field override editor" ratio="16 / 11" />
+      <ScreenshotSlot shot="env-override" label="The env override editor — per-field toggles with the base value shown beneath each override" />
     </div>
   </section>
 
   <!-- ENCRYPTION -->
   <section id="encryption" class="feature alt">
     <div class="container feature-grid reverse">
-      <ScreenshotSlot label="UnlockEnvModal — master password prompt with zxcvbn meter + 'cracking time' line" ratio="16 / 11" />
+      <ScreenshotSlot shot="master-lock" label="The master-password prompt for a sealed environment" />
       <div class="feature-text">
         <span class="eyebrow">Encrypted environments</span>
         <h2>Set a master password. Lock on quit.</h2>
@@ -146,7 +146,7 @@ const toc = [
           <span><span class="kbd">⌘ ↵</span> send</span>
         </div>
       </div>
-      <ScreenshotSlot label="CommandPalette — fuzzy results across requests + actions" ratio="16 / 11" />
+      <ScreenshotSlot shot="palette" label="The command palette — fuzzy results across requests, collections, envs and actions" />
     </div>
   </section>
 
@@ -186,14 +186,14 @@ const toc = [
           The whole flow is audited live in a persistent <strong>OpLog</strong> panel — bottom-right, no auto-dismiss, with collapsible warnings and a "Download log" button that writes a timestamped <code>.log</code> file. 56 unit tests + 1 integration test against the real Petstore spec.
         </p>
       </div>
-      <ScreenshotSlot label="OpLog panel — per-request rows, collapsible warnings, download button" ratio="16 / 11" />
+      <ScreenshotSlot shot="import-openapi" label="Importing an OpenAPI spec — requests materialised from the document" />
     </div>
   </section>
 
   <!-- GRAPHQL -->
   <section id="graphql" class="feature alt">
     <div class="container feature-grid reverse">
-      <ScreenshotSlot label="GraphQlEditor — split query + variables panes with JSON lint" ratio="16 / 11" />
+      <ScreenshotSlot shot="graphql" label="The GraphQL editor — split query and variables panes" />
       <div class="feature-text">
         <span class="eyebrow">GraphQL</span>
         <h2>Per the GraphQL-over-HTTP spec.</h2>
@@ -221,14 +221,14 @@ const toc = [
           A slide-in panel from the left (toggle via the icon in the left-panel footer). Each row shows the status pill, timing, env badge, request/collection breadcrumb, and substring filter on top. Click a row to navigate to the originating request — even across projects — and rehydrate that saved response. The retention limit is configurable in Settings.
         </p>
       </div>
-      <ScreenshotSlot label="HistoryPanel — slide-in left, status pills + env badge + breadcrumb" ratio="16 / 11" />
+      <ScreenshotSlot shot="history" label="The history panel — recent executions with status, timing and env badge" />
     </div>
   </section>
 
   <!-- JSON VIEWER -->
   <section id="json-viewer" class="feature alt">
     <div class="container feature-grid reverse">
-      <ScreenshotSlot label="JsonView — collapsible nodes + ⌘F search with next/prev nav + hover-copy" ratio="16 / 11" />
+      <ScreenshotSlot shot="collapsible_json" label="The custom JSON viewer — collapsible nodes with per-value hover-copy" />
       <div class="feature-text">
         <span class="eyebrow">Response viewer</span>
         <h2>Custom JSON tree. Not a re-skinned widget.</h2>
