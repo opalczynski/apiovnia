@@ -4,6 +4,15 @@ import ScreenshotSlot from "../components/ScreenshotSlot.astro";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// One card per theme — thumbnail + chip. Order = the in-app theme list.
+const themes = [
+  { id: "apiovnia",    label: "apiovnia",    desc: "amber default", dot: "#F59E0B", light: false },
+  { id: "atomic-dark", label: "atomic-dark", desc: "monochrome",    dot: "#ECECEC", light: false },
+  { id: "tokyo-night", label: "tokyo-night", desc: "blue-purple",   dot: "#7AA2F7", light: false },
+  { id: "monokai",     label: "monokai",     desc: "warm classic",  dot: "#F92672", light: false },
+  { id: "light",       label: "light",       desc: "for daylight",  dot: "#FFFFFF", light: true },
+];
+
 // Snippets pre-built as HTML strings so `{...}` inside the code is text, not an Astro
 // expression. set:html injects them as raw markup with their j-* spans intact.
 const copyAsSnippets = [
@@ -100,14 +109,14 @@ const toc = [
           And the <code>&#123;&#123;name&#125;&#125;</code> interpolation runs <em>after</em> the override merge, so an env variable can fill a hole left by an override — including inside encrypted values, decrypted in Rust before the request is built.
         </p>
       </div>
-      <ScreenshotSlot label="EnvOverridesTab — amber dot on the Overrides tab + per-field override editor" ratio="16 / 11" />
+      <ScreenshotSlot shot="env-override" label="The env override editor — per-field toggles with the base value shown beneath each override" />
     </div>
   </section>
 
   <!-- ENCRYPTION -->
   <section id="encryption" class="feature alt">
     <div class="container feature-grid reverse">
-      <ScreenshotSlot label="UnlockEnvModal — master password prompt with zxcvbn meter + 'cracking time' line" ratio="16 / 11" />
+      <ScreenshotSlot shot="master-lock" label="The master-password prompt for a sealed environment" />
       <div class="feature-text">
         <span class="eyebrow">Encrypted environments</span>
         <h2>Set a master password. Lock on quit.</h2>
@@ -146,7 +155,7 @@ const toc = [
           <span><span class="kbd">⌘ ↵</span> send</span>
         </div>
       </div>
-      <ScreenshotSlot label="CommandPalette — fuzzy results across requests + actions" ratio="16 / 11" />
+      <ScreenshotSlot shot="palette" label="The command palette — fuzzy results across requests, collections, envs and actions" />
     </div>
   </section>
 
@@ -186,14 +195,14 @@ const toc = [
           The whole flow is audited live in a persistent <strong>OpLog</strong> panel — bottom-right, no auto-dismiss, with collapsible warnings and a "Download log" button that writes a timestamped <code>.log</code> file. 56 unit tests + 1 integration test against the real Petstore spec.
         </p>
       </div>
-      <ScreenshotSlot label="OpLog panel — per-request rows, collapsible warnings, download button" ratio="16 / 11" />
+      <ScreenshotSlot shot="import-openapi" label="Importing an OpenAPI spec — requests materialised from the document" />
     </div>
   </section>
 
   <!-- GRAPHQL -->
   <section id="graphql" class="feature alt">
     <div class="container feature-grid reverse">
-      <ScreenshotSlot label="GraphQlEditor — split query + variables panes with JSON lint" ratio="16 / 11" />
+      <ScreenshotSlot shot="graphql" label="The GraphQL editor — split query and variables panes" />
       <div class="feature-text">
         <span class="eyebrow">GraphQL</span>
         <h2>Per the GraphQL-over-HTTP spec.</h2>
@@ -221,14 +230,14 @@ const toc = [
           A slide-in panel from the left (toggle via the icon in the left-panel footer). Each row shows the status pill, timing, env badge, request/collection breadcrumb, and substring filter on top. Click a row to navigate to the originating request — even across projects — and rehydrate that saved response. The retention limit is configurable in Settings.
         </p>
       </div>
-      <ScreenshotSlot label="HistoryPanel — slide-in left, status pills + env badge + breadcrumb" ratio="16 / 11" />
+      <ScreenshotSlot shot="history" label="The history panel — recent executions with status, timing and env badge" />
     </div>
   </section>
 
   <!-- JSON VIEWER -->
   <section id="json-viewer" class="feature alt">
     <div class="container feature-grid reverse">
-      <ScreenshotSlot label="JsonView — collapsible nodes + ⌘F search with next/prev nav + hover-copy" ratio="16 / 11" />
+      <ScreenshotSlot shot="collapsible_json" label="The custom JSON viewer — collapsible nodes with per-value hover-copy" />
       <div class="feature-text">
         <span class="eyebrow">Response viewer</span>
         <h2>Custom JSON tree. Not a re-skinned widget.</h2>
@@ -251,12 +260,24 @@ const toc = [
         Settings (<span class="kbd">⌘ ,</span>) → Appearance. Each theme is a CSS-variable bundle — no JS theme engine, no flash of unstyled content, applied at module init.
       </p>
 
-      <div class="theme-grid">
-        <div class="theme-chip apiovnia"><span class="dot"></span> apiovnia <small>amber default</small></div>
-        <div class="theme-chip atomic"><span class="dot"></span> atomic-dark <small>monochrome</small></div>
-        <div class="theme-chip tokyo"><span class="dot"></span> tokyo-night <small>blue-purple</small></div>
-        <div class="theme-chip monokai"><span class="dot"></span> monokai <small>warm classic</small></div>
-        <div class="theme-chip light"><span class="dot"></span> light <small>for daylight</small></div>
+      <div class="theme-cards">
+        {themes.map((t) => (
+          <figure class="theme-card">
+            <img
+              src={`${base}/screens/theme-${t.id}.webp`}
+              alt={`Apiovnia in the ${t.label} theme`}
+              loading="lazy"
+              decoding="async"
+              width="640"
+              height="391"
+            />
+            <figcaption class="theme-chip">
+              <span class:list={["dot", { light: t.light }]} style={`background:${t.dot}`}></span>
+              <span class="t-name">{t.label}</span>
+              <small>{t.desc}</small>
+            </figcaption>
+          </figure>
+        ))}
       </div>
     </div>
   </section>
@@ -386,31 +407,51 @@ const toc = [
     font-size: 12px;
   }
 
-  /* Theme chips */
-  .theme-grid {
+  /* Theme cards — thumbnail + chip below, centered 3-up / 2-up */
+  .theme-cards {
     margin-top: var(--space-6);
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-3);
+    justify-content: center;
+    gap: var(--space-5);
+  }
+  .theme-card {
+    margin: 0;
+    flex: 0 1 320px;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .theme-card img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-ctrl);
+    box-shadow: 0 16px 32px -24px rgba(0, 0, 0, 0.6);
   }
   .theme-chip {
+    align-self: center;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border-radius: var(--r-ctrl);
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--surface);
     font-size: 13px;
     color: var(--fg);
   }
-  .theme-chip .dot { width: 10px; height: 10px; border-radius: 50%; }
-  .theme-chip small { color: var(--fg-muted); font-weight: 400; font-size: 11.5px; }
-  .theme-chip.apiovnia .dot { background: #F59E0B; }
-  .theme-chip.atomic   .dot { background: #ECECEC; }
-  .theme-chip.tokyo    .dot { background: #7AA2F7; }
-  .theme-chip.monokai  .dot { background: #F92672; }
-  .theme-chip.light    .dot { background: #FFFFFF; border: 1px solid var(--border-strong); }
+  .theme-chip .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .theme-chip .dot.light { border: 1px solid var(--border-strong); }
+  .theme-chip .t-name { font-weight: 500; }
+  .theme-chip small { color: var(--fg-muted); font-size: 11.5px; }
 
   /* Shortcut table */
   .kbd-table {

@@ -1,6 +1,5 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import AppShellMock from "../components/AppShellMock.astro";
 import FeatureCard from "../components/FeatureCard.astro";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -105,7 +104,17 @@ await fetch(<span class="j-string">"https://api.acme.dev/auth/login"</span>, {
       </div>
 
       <div class="hero-visual">
-        <AppShellMock />
+        <div class="hero-frame">
+          <img
+            class="hero-shot"
+            src={`${base}/screens/mainpage.webp`}
+            alt="Apiovnia — the three-panel shell with projects, requests, the request editor and the response viewer"
+            width="1593"
+            height="1046"
+            fetchpriority="high"
+            decoding="async"
+          />
+        </div>
         <p class="visual-caption">
           Three panels. Projects, requests, editor + response. The JSON viewer is custom — not a re-skinned tree.
         </p>
@@ -333,6 +342,21 @@ await fetch(<span class="j-string">"https://api.acme.dev/auth/login"</span>, {
 
   .hero-visual {
     margin-top: var(--space-8);
+  }
+  .hero-frame {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-card);
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 60px 120px -40px rgba(0, 0, 0, 0.6),
+      0 30px 60px -30px rgba(245, 158, 11, 0.25);
+  }
+  .hero-shot {
+    display: block;
+    width: 100%;
+    height: auto;
   }
   .visual-caption {
     margin-top: var(--space-4);
