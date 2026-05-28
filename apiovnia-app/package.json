@@ -1,6 +1,6 @@
 {
   "name": "apiovnia-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Apiovnia — local-first REST API client for solo devs",
   "type": "module",
   "private": true,

@@ -90,7 +90,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "apiovnia-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "serde",
@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "apiovnia-crypto"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "apiovnia-http"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "apiovnia-core",
  "base64 0.22.1",
@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "apiovnia-openapi"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "apiovnia-core",
  "oas3",
@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "apiovnia-storage"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "apiovnia-core",
  "chrono",
@@ -160,7 +160,7 @@ dependencies = [
 
 [[package]]
 name = "apiovnia-tauri"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "apiovnia-core",
  "apiovnia-crypto",
