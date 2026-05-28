@@ -4,6 +4,15 @@ import ScreenshotSlot from "../components/ScreenshotSlot.astro";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// One card per theme — thumbnail + chip. Order = the in-app theme list.
+const themes = [
+  { id: "apiovnia",    label: "apiovnia",    desc: "amber default", dot: "#F59E0B", light: false },
+  { id: "atomic-dark", label: "atomic-dark", desc: "monochrome",    dot: "#ECECEC", light: false },
+  { id: "tokyo-night", label: "tokyo-night", desc: "blue-purple",   dot: "#7AA2F7", light: false },
+  { id: "monokai",     label: "monokai",     desc: "warm classic",  dot: "#F92672", light: false },
+  { id: "light",       label: "light",       desc: "for daylight",  dot: "#FFFFFF", light: true },
+];
+
 // Snippets pre-built as HTML strings so `{...}` inside the code is text, not an Astro
 // expression. set:html injects them as raw markup with their j-* spans intact.
 const copyAsSnippets = [
@@ -251,23 +260,9 @@ const toc = [
         Settings (<span class="kbd">⌘ ,</span>) → Appearance. Each theme is a CSS-variable bundle — no JS theme engine, no flash of unstyled content, applied at module init.
       </p>
 
-      <div class="theme-grid">
-        <div class="theme-chip apiovnia"><span class="dot"></span> apiovnia <small>amber default</small></div>
-        <div class="theme-chip atomic"><span class="dot"></span> atomic-dark <small>monochrome</small></div>
-        <div class="theme-chip tokyo"><span class="dot"></span> tokyo-night <small>blue-purple</small></div>
-        <div class="theme-chip monokai"><span class="dot"></span> monokai <small>warm classic</small></div>
-        <div class="theme-chip light"><span class="dot"></span> light <small>for daylight</small></div>
-      </div>
-
-      <div class="theme-shots">
-        {[
-          { id: "apiovnia", label: "apiovnia" },
-          { id: "atomic-dark", label: "atomic-dark" },
-          { id: "tokyo-night", label: "tokyo-night" },
-          { id: "monokai", label: "monokai" },
-          { id: "light", label: "light" },
-        ].map((t) => (
-          <figure class="theme-shot">
+      <div class="theme-cards">
+        {themes.map((t) => (
+          <figure class="theme-card">
             <img
               src={`${base}/screens/theme-${t.id}.webp`}
               alt={`Apiovnia in the ${t.label} theme`}
@@ -276,7 +271,11 @@ const toc = [
               width="640"
               height="391"
             />
-            <figcaption>{t.label}</figcaption>
+            <figcaption class="theme-chip">
+              <span class:list={["dot", { light: t.light }]} style={`background:${t.dot}`}></span>
+              <span class="t-name">{t.label}</span>
+              <small>{t.desc}</small>
+            </figcaption>
           </figure>
         ))}
       </div>
@@ -408,41 +407,23 @@ const toc = [
     font-size: 12px;
   }
 
-  /* Theme chips */
-  .theme-grid {
+  /* Theme cards — thumbnail + chip below, centered 3-up / 2-up */
+  .theme-cards {
     margin-top: var(--space-6);
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-3);
+    justify-content: center;
+    gap: var(--space-5);
   }
-  .theme-chip {
-    display: inline-flex;
-    align-items: center;
+  .theme-card {
+    margin: 0;
+    flex: 0 1 320px;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
-    padding: 10px 14px;
-    border-radius: var(--r-ctrl);
-    border: 1px solid var(--border);
-    background: var(--surface);
-    font-size: 13px;
-    color: var(--fg);
   }
-  .theme-chip .dot { width: 10px; height: 10px; border-radius: 50%; }
-  .theme-chip small { color: var(--fg-muted); font-weight: 400; font-size: 11.5px; }
-  .theme-chip.apiovnia .dot { background: #F59E0B; }
-  .theme-chip.atomic   .dot { background: #ECECEC; }
-  .theme-chip.tokyo    .dot { background: #7AA2F7; }
-  .theme-chip.monokai  .dot { background: #F92672; }
-  .theme-chip.light    .dot { background: #FFFFFF; border: 1px solid var(--border-strong); }
-
-  /* Theme thumbnails — visual feel, one per theme */
-  .theme-shots {
-    margin-top: var(--space-5);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-4);
-  }
-  .theme-shot { margin: 0; }
-  .theme-shot img {
+  .theme-card img {
     display: block;
     width: 100%;
     height: auto;
@@ -450,13 +431,27 @@ const toc = [
     border-radius: var(--r-ctrl);
     box-shadow: 0 16px 32px -24px rgba(0, 0, 0, 0.6);
   }
-  .theme-shot figcaption {
-    margin-top: 8px;
-    text-align: center;
-    font: 500 11.5px/1 var(--mono);
-    letter-spacing: 0.02em;
-    color: var(--fg-muted);
+  .theme-chip {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--fg);
   }
+  .theme-chip .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .theme-chip .dot.light { border: 1px solid var(--border-strong); }
+  .theme-chip .t-name { font-weight: 500; }
+  .theme-chip small { color: var(--fg-muted); font-size: 11.5px; }
 
   /* Shortcut table */
   .kbd-table {
