@@ -10,6 +10,7 @@
     - Changes flow up via `onChange(rows)`. Parent debounces persistence.
 -->
 <script lang="ts">
+  import { tick } from "svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { IC } from "$lib/components/icons";
   import type { KeyValue } from "$lib/types/domain";
@@ -28,6 +29,11 @@
     valuePlaceholder = "Value",
   }: Props = $props();
 
+  // Element refs for the real rows, so a promoted draft can hand focus to
+  // its freshly-created input (see promoteDraft).
+  let keyEls: HTMLInputElement[] = [];
+  let valEls: HTMLInputElement[] = [];
+
   function setRow(idx: number, patch: Partial<KeyValue>) {
     const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
     onChange(next);
@@ -37,14 +43,29 @@
     onChange(rows.filter((_, i) => i !== idx));
   }
 
-  function draftChange(field: "key" | "value", v: string) {
+  // The bottom row is a always-empty "draft". Typing in it promotes it to a
+  // real row. Critically: after promoting we move focus to the new row's
+  // matching input — otherwise focus stays on the (cleared) draft and every
+  // subsequent keystroke spawns *another* new row ("x", "-", "e", … each its
+  // own header). The draft input is cleared so the next entry starts fresh.
+  async function promoteDraft(field: "key" | "value", el: HTMLInputElement) {
+    const v = el.value;
     if (!v) return;
+    const newIndex = rows.length;
     const draft: KeyValue = {
       key: field === "key" ? v : "",
       value: field === "value" ? v : "",
       enabled: true,
     };
+    el.value = "";
     onChange([...rows, draft]);
+    await tick();
+    const target = field === "key" ? keyEls[newIndex] : valEls[newIndex];
+    if (target) {
+      target.focus();
+      const end = target.value.length;
+      target.setSelectionRange(end, end);
+    }
   }
 </script>
 
@@ -67,6 +88,7 @@
         />
       </label>
       <input
+        bind:this={keyEls[i]}
         class="cell mono col-k"
         type="text"
         value={r.key}
@@ -75,6 +97,7 @@
           setRow(i, { key: (e.currentTarget as HTMLInputElement).value })}
       />
       <input
+        bind:this={valEls[i]}
         class="cell mono col-v"
         type="text"
         value={r.value}
@@ -102,26 +125,14 @@
       type="text"
       value=""
       placeholder={keyPlaceholder}
-      oninput={(e) => {
-        const v = (e.currentTarget as HTMLInputElement).value;
-        if (v) {
-          draftChange("key", v);
-          (e.currentTarget as HTMLInputElement).value = "";
-        }
-      }}
+      oninput={(e) => promoteDraft("key", e.currentTarget as HTMLInputElement)}
     />
     <input
       class="cell mono col-v"
       type="text"
       value=""
       placeholder={valuePlaceholder}
-      oninput={(e) => {
-        const v = (e.currentTarget as HTMLInputElement).value;
-        if (v) {
-          draftChange("value", v);
-          (e.currentTarget as HTMLInputElement).value = "";
-        }
-      }}
+      oninput={(e) => promoteDraft("value", e.currentTarget as HTMLInputElement)}
     />
     <span class="col-x"></span>
   </div>
