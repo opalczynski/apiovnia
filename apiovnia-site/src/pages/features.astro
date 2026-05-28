@@ -258,6 +258,28 @@ const toc = [
         <div class="theme-chip monokai"><span class="dot"></span> monokai <small>warm classic</small></div>
         <div class="theme-chip light"><span class="dot"></span> light <small>for daylight</small></div>
       </div>
+
+      <div class="theme-shots">
+        {[
+          { id: "apiovnia", label: "apiovnia" },
+          { id: "atomic-dark", label: "atomic-dark" },
+          { id: "tokyo-night", label: "tokyo-night" },
+          { id: "monokai", label: "monokai" },
+          { id: "light", label: "light" },
+        ].map((t) => (
+          <figure class="theme-shot">
+            <img
+              src={`${base}/screens/theme-${t.id}.webp`}
+              alt={`Apiovnia in the ${t.label} theme`}
+              loading="lazy"
+              decoding="async"
+              width="640"
+              height="391"
+            />
+            <figcaption>{t.label}</figcaption>
+          </figure>
+        ))}
+      </div>
     </div>
   </section>
 
@@ -411,6 +433,30 @@ const toc = [
   .theme-chip.tokyo    .dot { background: #7AA2F7; }
   .theme-chip.monokai  .dot { background: #F92672; }
   .theme-chip.light    .dot { background: #FFFFFF; border: 1px solid var(--border-strong); }
+
+  /* Theme thumbnails — visual feel, one per theme */
+  .theme-shots {
+    margin-top: var(--space-5);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-4);
+  }
+  .theme-shot { margin: 0; }
+  .theme-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-ctrl);
+    box-shadow: 0 16px 32px -24px rgba(0, 0, 0, 0.6);
+  }
+  .theme-shot figcaption {
+    margin-top: 8px;
+    text-align: center;
+    font: 500 11.5px/1 var(--mono);
+    letter-spacing: 0.02em;
+    color: var(--fg-muted);
+  }
 
   /* Shortcut table */
   .kbd-table {
