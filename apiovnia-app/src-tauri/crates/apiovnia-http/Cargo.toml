@@ -19,5 +19,8 @@ mime.workspace = true
 chrono.workspace = true
 base64.workspace = true
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["net", "io-util", "macros", "rt-multi-thread"] }
+
 [lints]
 workspace = true

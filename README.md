@@ -125,7 +125,6 @@ If one platform's build fails after a tag is already published, re-run via **Act
 │           ├── apiovnia-crypto/   # Argon2id + AES-256-GCM, zxcvbn password policy
 │           └── apiovnia-openapi/  # oas3 import/export, secret scrubbing, schema inference
 ├── apiovnia-site/            # Astro 5 landing + docs (deploys to GH Pages)
-├── instruction.md            # immutable product brief
 ├── plan.md                   # phased implementation plan + live progress log
 ├── CLAUDE.md                 # notes for Claude / future-me working in this repo
 └── LICENSE                   # PolyForm Noncommercial 1.0.0
