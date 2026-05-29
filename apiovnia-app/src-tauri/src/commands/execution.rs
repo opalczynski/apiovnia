@@ -51,7 +51,8 @@ pub async fn execute_request(
     let pool = state.db.pool();
     let base = RequestRepo::get(pool, &request_id).await?;
 
-    let (override_opt, vars) = load_env_context(&state, &request_id, env_id.as_ref()).await?;
+    let (override_opt, vars, encrypted) =
+        load_env_context(&state, &request_id, env_id.as_ref()).await?;
     let resolved = resolve_request(&base, override_opt.as_ref(), &vars);
     let outcome = state.executor.execute(&resolved).await;
 
@@ -59,16 +60,30 @@ pub async fn execute_request(
     // a trail. We store enough to reconstruct the full ExecutionResult on
     // restart (sent snapshot, headers, body, kind, finalUrl); failures store
     // the error message instead.
+    //
+    // When the env is encrypted we deliberately drop every field that can
+    // carry resolved secrets — the sent snapshot (resolved Authorization +
+    // expanded `{{var}}` body), the response body and headers (server-issued
+    // tokens / Set-Cookie), the resolved final URL (an apikey may ride the
+    // query string) and the error string (reqwest embeds the URL). Otherwise
+    // those secrets would sit in the same at-rest-untrusted SQLite file the
+    // env encryption exists to protect, silently defeating it. Only
+    // non-secret metadata (status, timing, size, content-type) survives.
     match &outcome {
         Ok(result) => {
-            let headers_json = serde_json::to_string(&result.headers).ok();
-            let sent_json = serde_json::to_string(&result.sent).ok();
-            let body_for_history = if result.body.len() > 64 * 1024 {
-                // 64 KiB cap in history to keep the DB lean — the in-memory
-                // viewer always sees the full body during the session.
-                Some(format!("{}…", &result.body[..64 * 1024]))
+            let (headers_json, sent_json, body_for_history, final_url) = if encrypted {
+                (None, None, None, None)
             } else {
-                Some(result.body.clone())
+                let headers_json = serde_json::to_string(&result.headers).ok();
+                let sent_json = serde_json::to_string(&result.sent).ok();
+                let body = if result.body.len() > 64 * 1024 {
+                    // 64 KiB cap in history to keep the DB lean — the in-memory
+                    // viewer always sees the full body during the session.
+                    Some(format!("{}…", &result.body[..64 * 1024]))
+                } else {
+                    Some(result.body.clone())
+                };
+                (headers_json, sent_json, body, Some(result.final_url.clone()))
             };
             let body_kind = body_kind_str(result.body_kind);
             let _ = HistoryRepo::insert(
@@ -83,7 +98,7 @@ pub async fn execute_request(
                     response_body: body_for_history.as_deref(),
                     error_message: None,
                     sent_json: sent_json.as_deref(),
-                    final_url: Some(result.final_url.as_str()),
+                    final_url: final_url.as_deref(),
                     content_type: result.content_type.as_deref(),
                     body_kind: Some(body_kind),
                 },
@@ -91,6 +106,12 @@ pub async fn execute_request(
             .await;
         }
         Err(e) => {
+            let err_string = e.to_string();
+            let error_message = if encrypted {
+                "request failed (details omitted — encrypted environment)"
+            } else {
+                err_string.as_str()
+            };
             let _ = HistoryRepo::insert(
                 pool,
                 NewHistoryEntry {
@@ -101,7 +122,7 @@ pub async fn execute_request(
                     response_size_bytes: None,
                     response_headers_json: None,
                     response_body: None,
-                    error_message: Some(&e.to_string()),
+                    error_message: Some(error_message),
                     sent_json: None,
                     final_url: None,
                     content_type: None,
@@ -338,13 +359,15 @@ pub async fn build_request_snippet(
 ) -> Result<String, ExecuteError> {
     let pool = state.db.pool();
     let base = RequestRepo::get(pool, &request_id).await?;
-    let (over, vars) = load_env_context(&state, &request_id, env_id.as_ref()).await?;
+    let (over, vars, _encrypted) = load_env_context(&state, &request_id, env_id.as_ref()).await?;
     let resolved = resolve_request(&base, over.as_ref(), &vars);
     Ok(format.render(&resolved))
 }
 
 /// Shared resolution + (when encrypted) decryption path. Returns the
-/// optional override row + the `{{var}}` map to feed `resolve_request`.
+/// optional override row, the `{{var}}` map to feed `resolve_request`, and
+/// whether the env was encrypted (so callers can decide whether the resolved
+/// values are secret material that must not be persisted in cleartext).
 ///
 /// `EnvLocked` propagates through `?` — the encrypted-env helpers throw
 /// it when the session key isn't loaded.
@@ -352,9 +375,9 @@ async fn load_env_context(
     state: &State<'_, AppState>,
     request_id: &RequestId,
     env_id: Option<&EnvironmentId>,
-) -> Result<(Option<EnvOverride>, HashMap<String, String>), ExecuteError> {
+) -> Result<(Option<EnvOverride>, HashMap<String, String>, bool), ExecuteError> {
     let Some(env_ref) = env_id else {
-        return Ok((None, HashMap::new()));
+        return Ok((None, HashMap::new(), false));
     };
     let pool = state.db.pool();
     let env = EnvironmentRepo::get(pool, env_ref).await?;
@@ -377,7 +400,7 @@ async fn load_env_context(
             }
             None => None,
         };
-        Ok((over, map))
+        Ok((over, map, true))
     } else {
         let over = OverrideRepo::get(pool, request_id, env_ref).await?;
         let vlist = EnvVariableRepo::list_for_env(pool, env_ref).await?;
@@ -385,7 +408,7 @@ async fn load_env_context(
         for v in vlist {
             map.insert(v.name, v.value);
         }
-        Ok((over, map))
+        Ok((over, map, false))
     }
 }
 

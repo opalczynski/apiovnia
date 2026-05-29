@@ -38,21 +38,26 @@ impl Default for ExecutorConfig {
 #[derive(Debug, Clone)]
 pub struct Executor {
     client: reqwest::Client,
+    max_redirects: usize,
 }
 
 impl Executor {
     pub fn new(cfg: &ExecutorConfig) -> Result<Self> {
-        let redirect = if cfg.max_redirects == 0 {
-            reqwest::redirect::Policy::none()
-        } else {
-            reqwest::redirect::Policy::limited(cfg.max_redirects)
-        };
+        // We always disable reqwest's built-in redirect follower and walk the
+        // chain ourselves (see `send_following_redirects`). reqwest only sheds
+        // Authorization / Cookie / Proxy-Authorization on a cross-origin hop,
+        // which leaks any *custom* secret header (an ApiKey-in-Header, or any
+        // value the user set on the Headers tab) to the redirect target. Owning
+        // the loop lets us strip those too.
         let client = reqwest::Client::builder()
             .timeout(cfg.request_timeout)
-            .redirect(redirect)
+            .redirect(reqwest::redirect::Policy::none())
             .user_agent(&cfg.user_agent)
             .build()?;
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            max_redirects: cfg.max_redirects,
+        })
     }
 
     pub async fn execute(&self, req: &Request) -> Result<ExecutionResult> {
@@ -104,7 +109,9 @@ impl Executor {
             }
         };
 
-        let resp = builder.send().await?;
+        let resp = self
+            .send_following_redirects(req, builder, &method, url)
+            .await?;
         let status = resp.status();
         let final_url = resp.url().to_string();
 
@@ -159,6 +166,117 @@ impl Executor {
             final_url,
             sent,
         })
+    }
+
+    /// Send `initial` and walk the redirect chain by hand. Each hop is built
+    /// fresh from the domain `req`, which lets us decide per-hop whether to
+    /// attach the request's secrets.
+    ///
+    /// Once any hop crosses to a different origin (host / port / scheme) we
+    /// latch `sensitive_stripped` and never re-attach the auth block or the
+    /// user-set headers for the rest of the chain — so a `302 → attacker.com`
+    /// can't harvest an `X-Api-Key` or any other Headers-tab value. (The body
+    /// for 307/308 is preserved per HTTP semantics; secrets baked into a
+    /// request *body* are a separate surface tracked elsewhere.)
+    async fn send_following_redirects(
+        &self,
+        req: &Request,
+        initial: reqwest::RequestBuilder,
+        initial_method: &Method,
+        initial_url: Url,
+    ) -> Result<reqwest::Response> {
+        let mut resp = initial.send().await?;
+        let mut current_url = initial_url;
+        let mut current_method = initial_method.clone();
+        let mut sensitive_stripped = false;
+        let mut hops: usize = 0;
+
+        loop {
+            let status = resp.status().as_u16();
+            if self.max_redirects == 0 || !is_redirect_status(status) {
+                return Ok(resp);
+            }
+
+            // A 3xx with no usable Location header isn't actionable — hand the
+            // response back as-is rather than erroring.
+            let Some(location) = resp
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+            else {
+                return Ok(resp);
+            };
+
+            let next_url = current_url.join(location)?;
+            if next_url.scheme() != "http" && next_url.scheme() != "https" {
+                return Err(ExecutionError::InvalidRequest(format!(
+                    "redirect to unsupported scheme {:?}",
+                    next_url.scheme()
+                )));
+            }
+            if hops >= self.max_redirects {
+                return Err(ExecutionError::TooManyRedirects(self.max_redirects));
+            }
+
+            // Compare against the hop we just made (reqwest's own semantics).
+            // The latch is sticky: a later hop pointing back at the origin
+            // still won't get the secrets re-attached.
+            if is_cross_origin(&current_url, &next_url) {
+                sensitive_stripped = true;
+            }
+
+            let (next_method, keep_body) = redirect_transition(status, &current_method);
+
+            let mut hop_url = next_url.clone();
+            let mut builder = self.client.request(next_method.clone(), hop_url.clone());
+            if !sensitive_stripped {
+                builder = builder.headers(build_headers(&req.headers)?);
+                builder = apply_auth(builder, &req.auth, &mut hop_url)?;
+            }
+            if keep_body {
+                builder = apply_body(builder, req).await?;
+            }
+
+            resp = builder.send().await?;
+            current_url = next_url;
+            current_method = next_method;
+            hops += 1;
+        }
+    }
+}
+
+/// Redirect status codes we follow. Anything else (incl. `300 Multiple
+/// Choices`, which has no canonical Location) is returned to the caller.
+const fn is_redirect_status(status: u16) -> bool {
+    matches!(status, 301 | 302 | 303 | 307 | 308)
+}
+
+/// A redirect leaves the trusted origin when host, effective port, or scheme
+/// changes. The scheme check catches an `https → http` downgrade even when the
+/// explicit port number stays the same.
+fn is_cross_origin(from: &Url, to: &Url) -> bool {
+    from.host_str() != to.host_str()
+        || from.port_or_known_default() != to.port_or_known_default()
+        || from.scheme() != to.scheme()
+}
+
+/// The `(method, keep_body)` the next hop should use, mirroring browser/reqwest
+/// behaviour:
+///   - 303 → always GET, drop body
+///   - 301/302 → downgrade non-GET/HEAD to GET and drop body
+///   - 307/308 → preserve both method and body
+fn redirect_transition(status: u16, method: &Method) -> (Method, bool) {
+    match status {
+        307 | 308 => (method.clone(), true),
+        303 => (Method::GET, false),
+        // 301 / 302 (and anything else we got here with).
+        _ => {
+            if *method == Method::GET || *method == Method::HEAD {
+                (method.clone(), false)
+            } else {
+                (Method::GET, false)
+            }
+        }
     }
 }
 
@@ -597,5 +715,48 @@ mod tests {
         ] {
             let _ = method_to_reqwest(m);
         }
+    }
+
+    #[test]
+    fn follows_only_real_redirect_statuses() {
+        for s in [301, 302, 303, 307, 308] {
+            assert!(is_redirect_status(s), "{s} should be followed");
+        }
+        for s in [200, 201, 204, 300, 304, 305, 400, 404, 500] {
+            assert!(!is_redirect_status(s), "{s} should not be followed");
+        }
+    }
+
+    #[test]
+    fn cross_origin_detects_host_port_and_scheme() {
+        let u = |s: &str| Url::parse(s).unwrap();
+
+        // Same origin, different path → not cross-origin.
+        assert!(!is_cross_origin(&u("https://api.example.com/a"), &u("https://api.example.com/b")));
+        // Default vs explicit-but-equal port stays same-origin.
+        assert!(!is_cross_origin(&u("https://h.com/"), &u("https://h.com:443/")));
+
+        // Different host (even a subdomain) → cross-origin.
+        assert!(is_cross_origin(&u("https://api.example.com/"), &u("https://evil.com/")));
+        assert!(is_cross_origin(&u("https://api.example.com/"), &u("https://cdn.example.com/")));
+        // https → http downgrade on the same explicit port is still crossing.
+        assert!(is_cross_origin(&u("https://h.com:8443/"), &u("http://h.com:8443/")));
+        // Different port.
+        assert!(is_cross_origin(&u("http://h.com:8080/"), &u("http://h.com:9090/")));
+    }
+
+    #[test]
+    fn redirect_transition_matches_http_semantics() {
+        // 307/308 preserve method + body.
+        assert_eq!(redirect_transition(307, &Method::POST), (Method::POST, true));
+        assert_eq!(redirect_transition(308, &Method::PUT), (Method::PUT, true));
+        // 303 always downgrades to GET, drops body.
+        assert_eq!(redirect_transition(303, &Method::POST), (Method::GET, false));
+        // 301/302 downgrade non-GET/HEAD to GET, drop body.
+        assert_eq!(redirect_transition(301, &Method::POST), (Method::GET, false));
+        assert_eq!(redirect_transition(302, &Method::DELETE), (Method::GET, false));
+        // GET/HEAD survive a 301/302 unchanged.
+        assert_eq!(redirect_transition(302, &Method::GET), (Method::GET, false));
+        assert_eq!(redirect_transition(301, &Method::HEAD), (Method::HEAD, false));
     }
 }

@@ -20,6 +20,9 @@ pub enum ExecutionError {
     #[error("timeout after {0} ms")]
     Timeout(u64),
 
+    #[error("too many redirects (limit {0})")]
+    TooManyRedirects(usize),
+
     #[error("response too large to handle")]
     ResponseTooLarge,
 }
